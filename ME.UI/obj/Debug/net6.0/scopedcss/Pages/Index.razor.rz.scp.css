@@ -1,0 +1,26 @@
+fluent-card[b-zczu36viwi] {
+    --card-height: 400px;
+    --card-width: 500px;
+    padding: 20px;
+    margin: 12px;
+}
+
+.class-override[b-zczu36viwi] {
+    height: 163px;
+    width: 300px;
+}
+
+.state-override[b-zczu36viwi] {
+    --card-width: 350px;
+    --card-height: 300px;
+    --elevation: 6;
+}
+
+    .state-override:hover[b-zczu36viwi] {
+        --elevation: 12;
+    }
+
+.contents[b-zczu36viwi] {
+    display: flex;
+    flex-direction: column;
+}

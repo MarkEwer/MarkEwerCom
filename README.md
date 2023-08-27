@@ -1,2 +1,0 @@
-# MarkEwerCom
-My Personal Website
