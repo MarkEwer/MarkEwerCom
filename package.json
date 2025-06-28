@@ -1,0 +1,67 @@
+{
+  "name": "mark-ewer-portfolio",
+  "version": "1.0.0",
+  "description": "Personal portfolio and blog for Mark Ewer - Software Architect & Developer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "preview": "vitepress preview docs",
+    "serve": "vitepress serve docs",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@mdx-js/react": "^3.1.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "clsx": "^2.1.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@mdx-js/rollup": "^3.1.0",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^24.0.6",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vitepress": "1.0.0-alpha.28",
+    "vue": "3.2.44"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "@algolia/client-search"
+      ]
+    }
+  },
+  "keywords": [
+    "portfolio",
+    "blog",
+    "software-architecture",
+    "agile",
+    "vitepress",
+    "react",
+    "typescript",
+    "tailwindcss"
+  ],
+  "author": {
+    "name": "Mark Ewer",
+    "email": "mark@markewer.com",
+    "url": "https://markewer.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/markewer/MarkEwerCom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/markewer/MarkEwerCom/issues"
+  },
+  "homepage": "https://markewer.com"
+}

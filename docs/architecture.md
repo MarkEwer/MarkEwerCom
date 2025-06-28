@@ -1,1 +1,0 @@
-# MarkEwer.Com Architecture
