@@ -1,0 +1,533 @@
+---
+title: "C# 13: Partial Properties and Indexers - Completing the Partial Story"
+date: "2025-01-18"
+author: "Mark Ewer"
+slug: "csharp-13-partial-properties-indexers"
+description: "Explore C# 13's partial properties and indexers that complete the partial member story, enabling better code organization, source generation, and architectural flexibility."
+tags: ["csharp", "dotnet9", "partial", "properties", "indexers", "source-generation", "code-organization"]
+image: "/images/blog/csharp-logo.svg"
+---
+
+# C# 13: Partial Properties and Indexers - Completing the Partial Story
+
+C# 13 completes the partial member story by introducing support for partial properties and partial indexers. This enhancement builds upon the foundation of partial methods to provide comprehensive support for splitting member implementations across multiple files, enabling better code organization, enhanced source generation scenarios, and improved architectural flexibility.
+
+## Overview of Partial Properties and Indexers
+
+Partial properties and indexers follow the same pattern as partial methods, allowing you to separate the declaration from the implementation. This feature enables:
+
+- **Declaration in one file**: Define the property or indexer signature and contract
+- **Implementation in another file**: Provide the actual logic and backing storage
+- **Source generation support**: Tools can generate implementations for declared properties
+- **Architectural separation**: Separate API contracts from implementation details
+
+The feature supports both auto-properties and custom property implementations, giving developers complete flexibility in how they structure their code.
+
+## Why This Feature is Important
+
+### Code Organization Benefits
+- **Separation of concerns**: Keep API contracts separate from implementation details
+- **Team collaboration**: Different developers can work on declarations and implementations
+- **Maintainability**: Easier to maintain large classes with logical separation
+- **Version control**: Reduced merge conflicts when multiple developers modify the same class
+
+### Source Generation Benefits
+- **Framework integration**: Better support for ORM, serialization, and DI frameworks
+- **Compile-time code generation**: Generate property implementations at build time
+- **Performance optimization**: Generate specialized implementations for specific scenarios
+- **Reduced boilerplate**: Automatically generate common property patterns
+
+### Architectural Benefits
+- **Clean abstractions**: Define clear boundaries between API and implementation
+- **Plugin architecture**: Enable runtime or compile-time implementation swapping
+- **Testing**: Easier to mock and test individual components
+- **Library design**: Better support for extensible library architectures
+
+## Before C# 13: Limited Partial Support
+
+Prior to C# 13, partial members were limited to methods only, leading to inconsistent patterns and workarounds:
+
+```csharp
+// Partial methods were supported
+public partial class CustomerService
+{
+    // Declaration part - could be in one file
+    partial void ValidateCustomer(Customer customer);
+    
+    public void ProcessCustomer(Customer customer)
+    {
+        ValidateCustomer(customer); // Might do nothing if not implemented
+        // Process customer logic
+    }
+}
+
+public partial class CustomerService
+{
+    // Implementation part - could be in another file
+    partial void ValidateCustomer(Customer customer)
+    {
+        if (string.IsNullOrEmpty(customer.Name))
+            throw new ArgumentException("Customer name is required");
+    }
+}
+
+// Properties required workarounds and couldn't be partial
+public partial class Customer
+{
+    // Had to use field + partial method pattern for generated properties
+    private string _generatedName;
+    
+    partial void InitializeGeneratedName();
+    
+    public string Name
+    {
+        get
+        {
+            if (_generatedName == null)
+                InitializeGeneratedName();
+            return _generatedName ?? string.Empty;
+        }
+        set => _generatedName = value;
+    }
+    
+    // Indexers had similar limitations
+    private Dictionary<string, object> _properties = new();
+    
+    public object this[string key]
+    {
+        get => _properties.TryGetValue(key, out var value) ? value : null;
+        set => _properties[key] = value;
+    }
+    
+    // No way to make indexer implementation partial
+}
+
+// Source generators had to work around these limitations
+[GenerateProperties]
+public partial class GeneratedEntity
+{
+    // Generator had to create partial methods instead of properties
+    partial void SetName(string value);
+    partial string GetName();
+    
+    // Then create wrapper properties
+    public string Name
+    {
+        get => GetName();
+        set => SetName(value);
+    }
+}
+
+// Database entity example showing the old patterns
+public partial class Product
+{
+    // Manual property declarations
+    private int _id;
+    private string _name;
+    private decimal _price;
+    
+    public int Id
+    {
+        get => _id;
+        set
+        {
+            if (_id != value)
+            {
+                OnIdChanging(value);
+                _id = value;
+                OnIdChanged();
+            }
+        }
+    }
+    
+    // Partial methods for change notifications
+    partial void OnIdChanging(int value);
+    partial void OnIdChanged();
+    
+    // Had to repeat this pattern for every property
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name != value)
+            {
+                OnNameChanging(value);
+                _name = value;
+                OnNameChanged();
+            }
+        }
+    }
+    
+    partial void OnNameChanging(string value);
+    partial void OnNameChanged();
+}
+```
+
+## After C# 13: Complete Partial Support
+
+With C# 13's partial properties and indexers, code organization becomes much cleaner and more consistent:
+
+```csharp
+// Clean partial property declarations
+public partial class ModernCustomer
+{
+    // Declaration part - defines the contract
+    public partial string Name { get; set; }
+    public partial string Email { get; set; }
+    public partial DateTime CreatedDate { get; }
+    public partial bool IsActive { get; set; }
+    
+    // Partial indexer declaration
+    public partial object this[string key] { get; set; }
+}
+
+public partial class ModernCustomer
+{
+    // Implementation part - provides the logic
+    private string _name;
+    private string _email;
+    private readonly DateTime _createdDate = DateTime.UtcNow;
+    private bool _isActive = true;
+    private readonly Dictionary<string, object> _dynamicProperties = new();
+    
+    public partial string Name
+    {
+        get => _name ?? string.Empty;
+        set => _name = value?.Trim();
+    }
+    
+    public partial string Email
+    {
+        get => _email ?? string.Empty;
+        set
+        {
+            if (!IsValidEmail(value))
+                throw new ArgumentException("Invalid email format");
+            _email = value?.ToLowerInvariant();
+        }
+    }
+    
+    public partial DateTime CreatedDate => _createdDate;
+    
+    public partial bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive != value)
+            {
+                _isActive = value;
+                OnActiveStatusChanged?.Invoke(this, value);
+            }
+        }
+    }
+    
+    // Partial indexer implementation
+    public partial object this[string key]
+    {
+        get => _dynamicProperties.TryGetValue(key, out var value) ? value : null;
+        set
+        {
+            if (value == null)
+                _dynamicProperties.Remove(key);
+            else
+                _dynamicProperties[key] = value;
+        }
+    }
+    
+    private bool IsValidEmail(string email)
+    {
+        return !string.IsNullOrEmpty(email) && email.Contains("@");
+    }
+    
+    public event EventHandler<bool> OnActiveStatusChanged;
+}
+
+// Source generation becomes much cleaner
+[GenerateNotifyPropertyChanged]
+public partial class GeneratedEntity
+{
+    // Clean property declarations
+    public partial string FirstName { get; set; }
+    public partial string LastName { get; set; }
+    public partial int Age { get; set; }
+    
+    // Generator will create implementations in another partial class
+}
+
+// Generated code (by source generator)
+public partial class GeneratedEntity : INotifyPropertyChanged
+{
+    private string _firstName;
+    private string _lastName;
+    private int _age;
+    
+    public partial string FirstName
+    {
+        get => _firstName;
+        set
+        {
+            if (_firstName != value)
+            {
+                _firstName = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    
+    public partial string LastName
+    {
+        get => _lastName;
+        set
+        {
+            if (_lastName != value)
+            {
+                _lastName = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(FullName)); // Dependent property
+            }
+        }
+    }
+    
+    public partial int Age
+    {
+        get => _age;
+        set
+        {
+            if (_age != value)
+            {
+                _age = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    
+    // Additional generated members
+    public string FullName => $"{FirstName} {LastName}";
+    
+    public event PropertyChangedEventHandler PropertyChanged;
+    
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+
+// Advanced usage: Partial indexers with different access patterns
+public partial class ConfigurationManager
+{
+    // Declaration with different access levels
+    public partial string this[string section, string key] { get; set; }
+    internal partial T GetValue<T>(string section, string key);
+}
+
+public partial class ConfigurationManager
+{
+    private readonly Dictionary<string, Dictionary<string, string>> _config = new();
+    
+    public partial string this[string section, string key]
+    {
+        get
+        {
+            if (_config.TryGetValue(section, out var sectionData))
+                return sectionData.TryGetValue(key, out var value) ? value : null;
+            return null;
+        }
+        set
+        {
+            if (!_config.ContainsKey(section))
+                _config[section] = new Dictionary<string, string>();
+            _config[section][key] = value;
+        }
+    }
+    
+    internal partial T GetValue<T>(string section, string key)
+    {
+        var stringValue = this[section, key];
+        if (stringValue == null)
+            return default(T);
+        
+        return (T)Convert.ChangeType(stringValue, typeof(T));
+    }
+}
+```
+
+## Real-World Source Generation Example
+
+Here's a practical example showing how partial properties enable powerful source generation scenarios:
+
+```csharp
+// Entity definition using partial properties
+[Table("Products")]
+[GenerateRepository]
+public partial class Product
+{
+    [PrimaryKey]
+    public partial int Id { get; set; }
+    
+    [Required, MaxLength(100)]
+    public partial string Name { get; set; }
+    
+    [Column("ProductDescription")]
+    public partial string Description { get; set; }
+    
+    [Range(0, double.MaxValue)]
+    public partial decimal Price { get; set; }
+    
+    [ForeignKey("CategoryId")]
+    public partial Category Category { get; set; }
+    
+    // Indexer for dynamic properties
+    [JsonExtensionData]
+    public partial object this[string propertyName] { get; set; }
+}
+
+// Generated implementation (by source generator)
+public partial class Product : INotifyPropertyChanged, IValidatableObject
+{
+    private int _id;
+    private string _name;
+    private string _description;
+    private decimal _price;
+    private Category _category;
+    private readonly Dictionary<string, object> _extensionData = new();
+    
+    public partial int Id
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    public partial string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value?.Trim());
+    }
+    
+    public partial string Description
+    {
+        get => _description;
+        set => SetProperty(ref _description, value);
+    }
+    
+    public partial decimal Price
+    {
+        get => _price;
+        set
+        {
+            if (value < 0)
+                throw new ArgumentException("Price cannot be negative");
+            SetProperty(ref _price, value);
+        }
+    }
+    
+    public partial Category Category
+    {
+        get => _category;
+        set => SetProperty(ref _category, value);
+    }
+    
+    public partial object this[string propertyName]
+    {
+        get => _extensionData.TryGetValue(propertyName, out var value) ? value : null;
+        set
+        {
+            if (value == null)
+                _extensionData.Remove(propertyName);
+            else
+                _extensionData[propertyName] = value;
+            OnPropertyChanged($"Item[{propertyName}]");
+        }
+    }
+    
+    // Generated infrastructure
+    public event PropertyChangedEventHandler PropertyChanged;
+    
+    protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+    {
+        if (!EqualityComparer<T>.Default.Equals(field, value))
+        {
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+        return false;
+    }
+    
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+    
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrEmpty(Name))
+            yield return new ValidationResult("Name is required", new[] { nameof(Name) });
+        
+        if (Price < 0)
+            yield return new ValidationResult("Price must be non-negative", new[] { nameof(Price) });
+    }
+}
+```
+
+## Future Improvement Suggestions for Microsoft
+
+### 1. Partial Auto-Properties with Custom Logic
+Allow mixing auto-property syntax with custom logic:
+```csharp
+// Suggested future syntax
+public partial string Name { get; set; } = string.Empty; // Declaration with default
+
+public partial string Name // Implementation with custom logic
+{
+    get => field?.Trim() ?? string.Empty;
+    set => field = value?.ToUpper();
+}
+```
+
+### 2. Partial Property Attributes Inheritance
+Enable attribute inheritance between declaration and implementation:
+```csharp
+// Suggested future feature
+public partial class Entity
+{
+    [Required] // This attribute should be inherited by implementation
+    public partial string Name { get; set; }
+}
+```
+
+### 3. Conditional Partial Members
+Support conditional compilation for partial members:
+```csharp
+// Suggested future syntax
+#if DEBUG
+public partial string DebugInfo { get; }
+#endif
+```
+
+### 4. Partial Property Constraints
+Add constraints to ensure proper implementation:
+```csharp
+// Suggested future syntax
+public partial string Name { get; set; } requires implementation;
+```
+
+### 5. Enhanced IDE Support
+- Better IntelliSense for partial property navigation
+- Visual indicators showing declaration/implementation relationships
+- Refactoring tools for converting regular properties to partial
+
+## Conclusion
+
+The introduction of partial properties and indexers in C# 13 represents the completion of a long-awaited feature that brings consistency and powerful new capabilities to C# development. By extending the partial member concept beyond methods, Microsoft has enabled cleaner code organization, more powerful source generation scenarios, and better architectural patterns.
+
+This feature is particularly valuable for:
+- Large enterprise applications requiring clear separation of concerns
+- Framework and library developers creating extensible APIs
+- Source generation scenarios in ORMs, serialization, and UI frameworks
+- Teams working on complex codebases where different developers handle contracts and implementations
+
+The ability to separate property declarations from implementations opens new possibilities for code generation, testing, and architectural patterns that were previously difficult or impossible to achieve cleanly. As source generators become more prevalent in the .NET ecosystem, partial properties and indexers will play a crucial role in enabling more sophisticated and maintainable generated code patterns.
+
+With this enhancement, C# continues to evolve as a language that supports both large-scale enterprise development and modern metaprogramming scenarios, providing developers with the tools they need to build maintainable, performant, and well-organized applications.

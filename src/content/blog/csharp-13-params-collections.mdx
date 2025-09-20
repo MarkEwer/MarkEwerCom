@@ -1,0 +1,194 @@
+---
+title: "C# 13: Enhanced params Collections - Beyond Arrays"
+date: "2025-01-15"
+author: "Mark Ewer"
+slug: "csharp-13-params-collections"
+description: "Explore C# 13's enhanced params collections that extend beyond arrays to support Spans, Lists, and any collection type, enabling more flexible and performant method signatures."
+tags: ["csharp", "dotnet9", "params", "collections", "performance", "language-features"]
+image: "/images/blog/csharp-logo.svg"
+---
+
+# C# 13: Enhanced params Collections - Beyond Arrays
+
+One of the most significant improvements in C# 13 is the enhancement of the `params` modifier, which has been expanded far beyond its traditional array-only limitations. This feature represents a major step forward in making C# more flexible and performant for modern development scenarios.
+
+## Overview of Enhanced params Collections
+
+Prior to C# 13, the `params` modifier was restricted to array types only. This limitation often forced developers into suboptimal patterns or required them to create multiple overloads to accommodate different collection types. C# 13 removes this restriction, allowing `params` to work with any recognized collection type, including `Span<T>`, `ReadOnlySpan<T>`, `List<T>`, and any type that implements `IEnumerable<T>` with an `Add` method.
+
+The compiler can also work with collection interfaces like `IEnumerable<T>`, `IReadOnlyCollection<T>`, and `IReadOnlyList<T>`, synthesizing the appropriate storage when needed.
+
+## Why This Feature is Important
+
+### Performance Benefits
+- **Zero-allocation scenarios**: Using `Span<T>` and `ReadOnlySpan<T>` with `params` enables high-performance code without heap allocations
+- **Reduced boxing**: Better type matching reduces unnecessary conversions
+- **Stack-based operations**: Span-based params can operate entirely on the stack
+
+### Developer Productivity Benefits
+- **API consistency**: Libraries can provide uniform APIs regardless of the underlying collection type
+- **Reduced overloads**: No need to create multiple method overloads for different collection types
+- **Better type safety**: Stronger typing with collection-specific behaviors
+
+### Modern C# Alignment
+- **Span integration**: Aligns with .NET's push toward high-performance, low-allocation programming
+- **Collection expressions**: Works seamlessly with C# 12's collection expressions
+- **Generic constraints**: Enables more flexible generic programming patterns
+
+## Before C# 13: The Array Limitation
+
+Before this enhancement, developers were limited to arrays and often had to create multiple overloads or use less efficient patterns:
+
+```csharp
+// Old approach: Limited to arrays only
+public static void LogMessages(params string[] messages)
+{
+    foreach (var message in messages)
+    {
+        Console.WriteLine($"[LOG] {message}");
+    }
+}
+
+// Required additional overloads for different types
+public static void LogMessages(IEnumerable<string> messages)
+{
+    foreach (var message in messages)
+    {
+        Console.WriteLine($"[LOG] {message}");
+    }
+}
+
+// High-performance scenarios required awkward workarounds
+public static void ProcessData(ReadOnlySpan<int> data)
+{
+    // Had to pass spans explicitly - no params support
+    for (int i = 0; i < data.Length; i++)
+    {
+        Console.WriteLine($"Processing: {data[i]}");
+    }
+}
+
+// Usage was inconsistent
+LogMessages("Error", "Warning", "Info");           // Works with params
+LogMessages(new[] { "Error", "Warning", "Info" }); // Array allocation
+LogMessages(messageList);                          // Different overload
+
+// High-performance calls were verbose
+ProcessData(new ReadOnlySpan<int>(new[] { 1, 2, 3, 4, 5 }));
+```
+
+## After C# 13: Collection Flexibility
+
+With C# 13, the same functionality becomes much more elegant and performant:
+
+```csharp
+// Modern approach: Support for any collection type
+public static void LogMessages(params IEnumerable<string> messages)
+{
+    foreach (var message in messages)
+    {
+        Console.WriteLine($"[LOG] {message}");
+    }
+}
+
+// High-performance with Span support
+public static void ProcessNumbers(params ReadOnlySpan<int> numbers)
+{
+    for (int i = 0; i < numbers.Length; i++)
+    {
+        Console.WriteLine($"Processing: {numbers[i] * 2}");
+    }
+}
+
+// List-based params for builder patterns
+public static List<T> CreateList<T>(params List<T> items)
+{
+    var result = new List<T>();
+    foreach (var item in items)
+    {
+        result.Add(item);
+    }
+    return result;
+}
+
+// Interface-based params with compiler synthesis
+public static void ProcessItems<T>(params IReadOnlyList<T> items)
+{
+    for (int i = 0; i < items.Count; i++)
+    {
+        Console.WriteLine($"Item {i}: {items[i]}");
+    }
+}
+
+// Usage is now consistent and performant
+LogMessages("Error", "Warning", "Info");     // No array allocation
+ProcessNumbers(1, 2, 3, 4, 5);              // Stack-based, zero allocation
+CreateList(existingList);                    // Direct list passing
+ProcessItems("A", "B", "C");                // Compiler-synthesized storage
+
+// Works seamlessly with collection expressions (C# 12)
+var messages = ["Debug", "Info", "Warning"];
+LogMessages(messages);                       // Direct collection passing
+```
+
+## Real-World Impact Example
+
+Here's a practical example showing the performance and usability improvements:
+
+```csharp
+// C# 13: High-performance logging with zero allocations
+public static class Logger
+{
+    public static void LogWithContext(LogLevel level, params ReadOnlySpan<string> contextItems)
+    {
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        var context = string.Join(" | ", contextItems.ToArray());
+        Console.WriteLine($"[{timestamp}] [{level}] {context}");
+    }
+}
+
+// Usage: Clean, performant, and flexible
+Logger.LogWithContext(LogLevel.Error, "UserService", "Authentication", "Token expired");
+Logger.LogWithContext(LogLevel.Info, "OrderService", "Processing", $"Order {orderId}");
+
+// Works with existing collections without conversion overhead
+var contextParts = new[] { "PaymentService", "Validation", "Credit card" };
+Logger.LogWithContext(LogLevel.Warning, contextParts);
+```
+
+## Future Improvement Suggestions for Microsoft
+
+### 1. Enhanced Collection Expression Integration
+Provide deeper integration with collection expressions to enable even more concise syntax:
+```csharp
+// Suggested future syntax
+ProcessItems([..existingItems, "new item"]);
+```
+
+### 2. Async Enumerable Support
+Extend params support to `IAsyncEnumerable<T>` for async scenarios:
+```csharp
+// Suggested future feature
+public async Task ProcessAsync(params IAsyncEnumerable<string> items) { }
+```
+
+### 3. Conditional Params Constraints
+Allow generic constraints on params collections for better type safety:
+```csharp
+// Suggested future syntax
+public void Process<T>(params ICollection<T> items) where T : IComparable<T>
+```
+
+### 4. Performance Analyzers
+Provide built-in analyzers that suggest when to use Span-based params for performance-critical code.
+
+### 5. Collection Builder Attribute Support
+Extend support for custom collection types with builder patterns similar to collection expressions.
+
+## Conclusion
+
+The enhanced params collections in C# 13 represent a significant leap forward in the language's evolution toward more performant and flexible APIs. By removing the array-only restriction, Microsoft has enabled developers to write cleaner, more efficient code that aligns with modern .NET performance best practices.
+
+This feature particularly shines in high-performance scenarios where memory allocations matter, while also improving the everyday developer experience by reducing the need for multiple method overloads. As libraries and frameworks adopt these patterns, we can expect to see more consistent and performant APIs across the .NET ecosystem.
+
+The move toward collection-agnostic programming represents C#'s continued evolution as a language that balances developer productivity with performance, making it an excellent choice for both rapid application development and high-performance computing scenarios.
