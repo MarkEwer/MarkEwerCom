@@ -1,0 +1,43 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="#F5F7FA" />
+  <!-- AI-Powered Code Generation Banner: Green & Purple Theme -->
+  <g>
+    <!-- Developer at desk -->
+    <rect x="180" y="260" width="120" height="30" rx="8" fill="#9F7AEA" />
+    <ellipse cx="240" cy="240" rx="32" ry="40" fill="#68D391" />
+    <ellipse cx="240" cy="220" rx="20" ry="20" fill="#9F7AEA" />
+    <ellipse cx="232" cy="220" rx="4" ry="6" fill="#fff" />
+    <ellipse cx="248" cy="220" rx="4" ry="6" fill="#fff" />
+    <ellipse cx="232" cy="220" rx="1.5" ry="2" fill="#6B46C1" />
+    <ellipse cx="248" cy="220" rx="1.5" ry="2" fill="#6B46C1" />
+    <path d="M232 230 Q240 235 248 230" stroke="#6B46C1" stroke-width="2" fill="none" />
+    <!-- Computer monitor -->
+    <rect x="210" y="190" width="60" height="30" rx="6" fill="#68D391" />
+    <rect x="225" y="200" width="30" height="10" rx="2" fill="#F5F7FA" />
+    <!-- AI assistant (robot) -->
+    <ellipse cx="600" cy="180" rx="32" ry="40" fill="#68D391" />
+    <ellipse cx="600" cy="150" rx="20" ry="20" fill="#9F7AEA" />
+    <ellipse cx="592" cy="150" rx="4" ry="6" fill="#fff" />
+    <ellipse cx="608" cy="150" rx="4" ry="6" fill="#fff" />
+    <ellipse cx="592" cy="150" rx="1.5" ry="2" fill="#6B46C1" />
+    <ellipse cx="608" cy="150" rx="1.5" ry="2" fill="#6B46C1" />
+    <path d="M592 160 Q600 165 608 160" stroke="#6B46C1" stroke-width="2" fill="none" />
+    <!-- Robot hand with code -->
+    <rect x="620" y="200" width="24" height="18" rx="4" fill="#F5F7FA" stroke="#68D391" stroke-width="2" />
+    <text x="632" y="213" text-anchor="middle" font-size="12" fill="#6B46C1" font-family="Segoe UI">{ }</text>
+    <!-- Code flow arrow -->
+    <path d="M270 210 Q400 140 600 180" stroke="#9F7AEA" stroke-width="6" fill="none" marker-end="url(#arrowhead)" />
+    <!-- Generated code block -->
+    <rect x="900" y="160" width="180" height="80" rx="20" fill="#68D391" />
+    <text x="990" y="205" text-anchor="middle" font-size="22" fill="#fff" font-family="Segoe UI">Generated Code</text>
+    <path d="M644 200 Q800 180 900 200" stroke="#68D391" stroke-width="6" fill="none" marker-end="url(#arrowhead)" />
+  </g>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#68D391" />
+    </marker>
+  </defs>
+  <!-- Title -->
+  <text x="600" y="60" text-anchor="middle" font-size="36" font-weight="bold" fill="#333" font-family="Segoe UI">AI-Powered Code Generation</text>
+  <text x="600" y="360" text-anchor="middle" font-size="22" fill="#68D391" font-family="Segoe UI">From Developer to AI to Generated Code</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="#F5F7FA" />
+  <!-- Debugging Banner: Green & Purple Theme -->
+  <g>
+    <!-- Bug Icon -->
+    <ellipse cx="300" cy="200" rx="60" ry="40" fill="#9F7AEA" />
+    <ellipse cx="300" cy="200" rx="40" ry="24" fill="#68D391" />
+    <circle cx="300" cy="200" r="16" fill="#6B46C1" />
+    <!-- Bug legs -->
+    <path d="M260 180 Q240 160 220 180" stroke="#6B46C1" stroke-width="4" fill="none" />
+    <path d="M260 220 Q240 240 220 220" stroke="#6B46C1" stroke-width="4" fill="none" />
+    <path d="M340 180 Q360 160 380 180" stroke="#68D391" stroke-width="4" fill="none" />
+    <path d="M340 220 Q360 240 380 220" stroke="#68D391" stroke-width="4" fill="none" />
+    <!-- AI circuit motif -->
+    <rect x="600" y="120" width="120" height="180" rx="60" fill="#9F7AEA" />
+    <rect x="640" y="180" width="40" height="120" rx="20" fill="#68D391" />
+    <rect x="660" y="120" width="8" height="60" fill="#6B46C1" />
+    <circle cx="664" cy="120" r="16" fill="#68D391" />
+    <!-- Circuit lines connecting bug to AI -->
+    <path d="M316 200 Q500 160 664 140" stroke="#6B46C1" stroke-width="3" fill="none" />
+    <path d="M316 200 Q500 240 664 260" stroke="#68D391" stroke-width="3" fill="none" />
+    <!-- Magnifying glass for debugging -->
+    <circle cx="900" cy="200" r="40" fill="#68D391" />
+    <rect x="940" y="220" width="40" height="10" rx="5" fill="#6B46C1" transform="rotate(30 960 225)" />
+    <circle cx="900" cy="200" r="28" fill="#F5F7FA" stroke="#9F7AEA" stroke-width="6" />
+    <!-- Circuit lines connecting AI to magnifying glass -->
+    <path d="M720 200 Q800 200 872 200" stroke="#9F7AEA" stroke-width="3" fill="none" />
+  </g>
+  <!-- Title -->
+  <text x="600" y="60" text-anchor="middle" font-size="36" font-weight="bold" fill="#333">Debugging with AI: Smarter, Faster, Better?</text>
+  <text x="600" y="360" text-anchor="middle" font-size="22" fill="#68D391">Automated Bug Detection • Intelligent Suggestions</text>
+</svg>

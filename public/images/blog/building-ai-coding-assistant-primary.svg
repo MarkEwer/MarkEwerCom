@@ -1,0 +1,40 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="#F5F7FA" />
+  <!-- Helpful Robot in Office Scene -->
+  <g>
+    <!-- Office desk -->
+    <rect x="250" y="280" width="700" height="40" rx="8" fill="#9F7AEA" />
+    <!-- Computer monitor -->
+    <rect x="320" y="210" width="80" height="50" rx="8" fill="#68D391" />
+    <rect x="340" y="225" width="40" height="20" rx="4" fill="#F5F7FA" />
+    <!-- Coffee mug -->
+    <rect x="420" y="250" width="24" height="18" rx="6" fill="#6B46C1" />
+    <rect x="440" y="255" width="6" height="8" rx="2" fill="#68D391" />
+    <!-- Robot body -->
+    <ellipse cx="700" cy="220" rx="40" ry="50" fill="#68D391" />
+    <!-- Robot head -->
+    <ellipse cx="700" cy="170" rx="28" ry="28" fill="#9F7AEA" />
+    <!-- Robot eyes -->
+    <ellipse cx="690" cy="170" rx="5" ry="7" fill="#fff" />
+    <ellipse cx="710" cy="170" rx="5" ry="7" fill="#fff" />
+    <ellipse cx="690" cy="170" rx="2" ry="3" fill="#6B46C1" />
+    <ellipse cx="710" cy="170" rx="2" ry="3" fill="#6B46C1" />
+    <!-- Robot smile -->
+    <path d="M690 185 Q700 190 710 185" stroke="#6B46C1" stroke-width="2" fill="none" />
+    <!-- Robot arms -->
+    <rect x="660" y="220" width="12" height="50" rx="6" fill="#9F7AEA" />
+    <rect x="728" y="220" width="12" height="50" rx="6" fill="#9F7AEA" />
+    <!-- Robot hand holding a document -->
+    <rect x="655" y="265" width="18" height="24" rx="4" fill="#F5F7FA" stroke="#6B46C1" stroke-width="2" />
+    <rect x="735" y="265" width="18" height="24" rx="4" fill="#F5F7FA" stroke="#68D391" stroke-width="2" />
+    <!-- Office chair -->
+    <rect x="680" y="320" width="40" height="30" rx="10" fill="#6B46C1" />
+    <!-- Office background elements -->
+    <rect x="900" y="120" width="40" height="80" rx="8" fill="#68D391" />
+    <rect x="950" y="140" width="20" height="40" rx="4" fill="#9F7AEA" />
+    <rect x="270" y="120" width="40" height="80" rx="8" fill="#9F7AEA" />
+    <rect x="230" y="140" width="20" height="40" rx="4" fill="#68D391" />
+  </g>
+  <!-- Title -->
+  <text x="600" y="60" text-anchor="middle" font-size="36" font-weight="bold" fill="#333" font-family="Segoe UI">Building Your Own AI Coding Assistant</text>
+</svg>

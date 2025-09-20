@@ -1,0 +1,35 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="#F5F7FA" />
+  <!-- Legacy Code Modernization Banner: Green & Purple Theme -->
+  <g>
+    <!-- Legacy code block (old, tangled) -->
+    <rect x="120" y="160" width="220" height="120" rx="20" fill="#9F7AEA" />
+    <text x="230" y="220" text-anchor="middle" font-size="22" fill="#fff" font-family="Segoe UI">Legacy Code</text>
+    <path d="M140 180 Q180 250 320 220 Q200 180 340 260" stroke="#6B46C1" stroke-width="3" fill="none" />
+    <!-- AI assistant (robot) -->
+    <ellipse cx="480" cy="220" rx="40" ry="50" fill="#68D391" />
+    <ellipse cx="480" cy="170" rx="28" ry="28" fill="#9F7AEA" />
+    <ellipse cx="470" cy="170" rx="5" ry="7" fill="#fff" />
+    <ellipse cx="490" cy="170" rx="5" ry="7" fill="#fff" />
+    <ellipse cx="470" cy="170" rx="2" ry="3" fill="#6B46C1" />
+    <ellipse cx="490" cy="170" rx="2" ry="3" fill="#6B46C1" />
+    <path d="M470 185 Q480 190 490 185" stroke="#6B46C1" stroke-width="2" fill="none" />
+    <!-- AI hand holding a wrench -->
+    <rect x="510" y="240" width="18" height="24" rx="4" fill="#F5F7FA" stroke="#68D391" stroke-width="2" />
+    <rect x="520" y="250" width="6" height="14" rx="2" fill="#6B46C1" />
+    <!-- Modern code block (clean, refactored) -->
+    <rect x="800" y="160" width="220" height="120" rx="20" fill="#68D391" />
+    <text x="910" y="220" text-anchor="middle" font-size="22" fill="#fff" font-family="Segoe UI">Modern Code</text>
+    <path d="M520 220 Q700 180 800 220" stroke="#9F7AEA" stroke-width="6" fill="none" marker-end="url(#arrowhead)" />
+    <!-- Migration arrow -->
+    <path d="M340 220 Q410 220 520 220" stroke="#68D391" stroke-width="6" fill="none" marker-end="url(#arrowhead)" />
+  </g>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#68D391" />
+    </marker>
+  </defs>
+  <!-- Title -->
+  <text x="600" y="60" text-anchor="middle" font-size="36" font-weight="bold" fill="#333" font-family="Segoe UI">AI for Legacy Code Modernization</text>
+  <text x="600" y="360" text-anchor="middle" font-size="22" fill="#68D391" font-family="Segoe UI">From Tangled Legacy to Clean Modern Code</text>
+</svg>

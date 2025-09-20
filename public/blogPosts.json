@@ -1,0 +1,86 @@
+[
+  {
+    "title": "Agile Principle #12",
+    "date": "2018-11-02",
+    "slug": "agile-principle-12",
+    "description": "At regular intervals, the team reflects on how to become more effective, then tunes and adjusts its behavior accordingly.",
+    "tags": ["agile", "retrospectives", "team-improvement"]
+  },
+  {
+    "title": "Agile Principles #11",
+    "date": "2018-10-20",
+    "slug": "agile-principles-11",
+    "description": "The best architectures, requirements, and designs emerge from self-organizing teams.",
+    "tags": ["agile", "self-organizing-teams", "team-management", "architecture"]
+  },
+  {
+    "title": "CQRS System Design",
+    "date": "2018-09-14",
+    "slug": "cqrs-system-design",
+    "description": "A presentation on designing and building a system for a major automotive parts sales company using the CQRS design pattern.",
+    "tags": ["cqrs", "architecture", "system-design", "event-sourcing"]
+  },
+  {
+    "title": "Agile Principle #10",
+    "date": "2018-08-14",
+    "slug": "agile-principle-10",
+    "description": "Simplicity-the art of maximizing the amount of work not done-is essential.",
+    "tags": ["agile", "simplicity", "product-backlog", "prioritization"]
+  },
+  {
+    "title": "SmartUI Architecture Pattern",
+    "date": "2018-07-21",
+    "slug": "smartui-architecture-pattern",
+    "description": "An analysis of the Smart Client pattern where each user interface screen includes the business logic for making that screen work.",
+    "tags": ["architecture", "patterns", "brownfield", "legacy-systems", "rad-tools"]
+  },
+  {
+    "title": "Agile Principle #9",
+    "date": "2018-06-08",
+    "slug": "agile-principle-9",
+    "description": "Continuous attention to technical excellence and good design enhances agility.",
+    "tags": ["agile", "technical-excellence", "design", "solid-principles", "refactoring"]
+  },
+  {
+    "title": "Agile Process #8",
+    "date": "2018-05-18",
+    "slug": "agile-process-8",
+    "description": "Agile processes promote sustainable development. The sponsors, developers, and users should be able to maintain a constant pace indefinitely.",
+    "tags": ["agile", "sustainable-development", "team-management", "kanban", "work-life-balance"]
+  },
+  {
+    "title": "Agile Principle #7",
+    "date": "2018-04-18",
+    "slug": "agile-principle-7",
+    "description": "Working software is the primary measure of progress.",
+    "tags": ["agile", "progress-measurement", "definition-of-done", "work-breakdown-structure"]
+  },
+  {
+    "title": "Agile Principle #6",
+    "date": "2018-03-18",
+    "slug": "agile-principle-6",
+    "description": "The most efficient and effective method of conveying information to and within a development team is face-to-face conversation.",
+    "tags": ["agile", "communication", "team-collaboration", "daily-standup", "video-conferencing"]
+  },
+  {
+    "title": "Agile Principle #2",
+    "date": "2017-10-18",
+    "slug": "agile-principle-2",
+    "description": "Welcome changing requirements, even late in development. Agile processes harness change for the customer's competitive advantage.",
+    "tags": ["agile", "change-management", "requirements", "competitive-advantage", "feedback"]
+  },
+  {
+    "title": "Agile Principle #1",
+    "date": "2017-09-14",
+    "slug": "agile-principle-1",
+    "description": "Our highest priority is to satisfy the customer through early and continuous delivery of valuable software.",
+    "tags": ["agile", "customer-satisfaction", "iterative-development", "value-delivery"]
+  },
+  {
+    "title": "Freelancing",
+    "date": "2016-10-22",
+    "slug": "freelancing",
+    "description": "Freelancing as a developer can seem scary because you have to do everything. The strategy is simple: find a partner that can do what you can't.",
+    "tags": ["freelancing", "teamwork", "business", "partnerships", "case-studies"]
+  }
+]

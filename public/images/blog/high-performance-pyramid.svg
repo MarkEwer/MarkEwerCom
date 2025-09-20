@@ -1,0 +1,35 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pyramidGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5b21b6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc"/>
+  
+  <!-- Pyramid layers from bottom to top -->
+  <!-- Goal (bottom layer) -->
+  <polygon points="50,250 350,250 320,220 80,220" fill="#e11d48" stroke="#be123c" stroke-width="2"/>
+  <text x="200" y="240" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">GOAL</text>
+  
+  <!-- Trust (second layer) -->
+  <polygon points="80,220 320,220 290,190 110,190" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+  <text x="200" y="210" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">TRUST</text>
+  
+  <!-- Conflict (third layer) -->
+  <polygon points="110,190 290,190 260,160 140,160" fill="#10b981" stroke="#059669" stroke-width="2"/>
+  <text x="200" y="180" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">CONFLICT</text>
+  
+  <!-- One Voice (fourth layer) -->
+  <polygon points="140,160 260,160 230,130 170,130" fill="#3b82f6" stroke="#2563eb" stroke-width="2"/>
+  <text x="200" y="150" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">ONE VOICE</text>
+  
+  <!-- Accountability (top layer) -->
+  <polygon points="170,130 230,130 200,100 200,100" fill="#7c3aed" stroke="#6d28d9" stroke-width="2"/>
+  <text x="200" y="120" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">ACCOUNTABILITY</text>
+  
+  <!-- Title -->
+  <text x="200" y="30" text-anchor="middle" fill="#1f2937" font-family="Arial, sans-serif" font-size="18" font-weight="bold">High Performance Team Pyramid</text>
+</svg>

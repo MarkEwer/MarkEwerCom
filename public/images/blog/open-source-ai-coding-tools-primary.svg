@@ -1,0 +1,32 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="#F5F7FA" />
+  <g>
+    <!-- Nodes -->
+    <rect x="100" y="160" width="120" height="60" rx="16" fill="#68D391" />
+    <rect x="300" y="160" width="120" height="60" rx="16" fill="#9F7AEA" />
+    <rect x="500" y="160" width="120" height="60" rx="16" fill="#6B46C1" />
+    <rect x="700" y="100" width="120" height="60" rx="16" fill="#C6F6D5" />
+    <rect x="700" y="220" width="120" height="60" rx="16" fill="#9F7AEA" />
+    <rect x="900" y="220" width="120" height="60" rx="16" fill="#68D391" />
+    <!-- Labels -->
+    <text x="160" y="195" text-anchor="middle" font-size="22" fill="#fff">IDE</text>
+    <text x="360" y="195" text-anchor="middle" font-size="22" fill="#fff">Chat</text>
+    <text x="560" y="195" text-anchor="middle" font-size="22" fill="#fff">Agent</text>
+    <text x="760" y="135" text-anchor="middle" font-size="22" fill="#6B46C1">LLM</text>
+    <text x="760" y="255" text-anchor="middle" font-size="22" fill="#fff">MCP</text>
+    <text x="960" y="255" text-anchor="middle" font-size="22" fill="#fff">Database</text>
+    <!-- Arrows -->
+    <path d="M220 190 L300 190" stroke="#333" stroke-width="4" marker-end="url(#arrowhead)" />
+    <path d="M420 190 L500 190" stroke="#333" stroke-width="4" marker-end="url(#arrowhead)" />
+    <!-- Agent to LLM & MCP -->
+    <path d="M620 190 C660 170 700 130 700 130" stroke="#6B46C1" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+    <path d="M620 190 C660 210 700 250 700 250" stroke="#68D391" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+    <!-- MCP to Database -->
+    <path d="M820 250 L900 250" stroke="#6B46C1" stroke-width="4" marker-end="url(#arrowhead)" />
+  </g>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+</svg>

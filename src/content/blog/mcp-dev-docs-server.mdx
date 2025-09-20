@@ -1,0 +1,570 @@
+---
+title: "Building Your Own MCP Server for Custom Developer Documentation"
+date: "2025-07-14"
+author: "Mark Ewer"
+slug: "building-mcp-dev-docs"
+description: "A practical guide to creating a custom MCP server that enhances your AI coding experience with private library documentation."
+tags: ["ai", "assistant", "mcp", "development", "documentation"]
+---
+
+# Building Your Own MCP Server for Custom Developer Documentation
+
+A practical guide to creating a custom Model Context Protocol (MCP) server using MCP SDK for C#. 
+This guide shows how to create a C# solution for the MCP server, how to build an index of all the markdown
+files in a folder, and how to expose the content via MCP server tools for search, category, and details.
+
+## Introduction: Why Documentation Matters (Even When No One Reads It)
+
+Let's face it—we've all been there. You're knee-deep in code, desperately searching for information about that obscure library method, only to find documentation that's about as helpful as a chocolate teapot. Or worse, no documentation at all.
+
+"Just read the code," they say. Sure, because who doesn't love spending their Tuesday afternoon reverse-engineering someone else's spaghetti logic from three years ago?
+
+This is where Model Context Protocol (MCP) servers come to the rescue. By building your own MCP server for custom developer documentation, you're creating a bridge between your private libraries and your AI coding assistant—making your documentation not just accessible, but actually *useful*.
+
+## What's an MCP Server Anyway?
+
+Before we dive into the code, let's clarify what we're building. A Model Context Protocol (MCP) server is a specialized API that provides contextual information to AI models. Think of it as your AI assistant's research assistant—it fetches relevant documentation, code examples, and context when your AI needs it.
+
+For those who enjoy analogies: if your AI coding assistant is like having a brilliant but amnesiac pair programmer, an MCP server is like giving them access to your team's collective memory.
+
+## Setting Up Your C# MCP Server Project
+
+Let's start by creating our project structure. We'll need:
+
+1. A .NET Core Web API project
+2. The MCP SDK for C# (which I'll assume exists in this glorious future of 2025)
+3. A way to index and search our documentation
+
+Here's how to set up the basic project:
+
+```csharp
+// First, create a new Web API project
+// dotnet new webapi -n DevDocsMcpServer
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using McpSdk;  // Our futuristic MCP SDK
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Register our MCP services
+builder.Services.AddMcpServer(options =>
+{
+    options.ServerName = "DevDocs MCP Server";
+    options.ServerDescription = "Custom documentation for internal libraries";
+    options.ApiVersion = "1.0";
+});
+
+// Add our documentation services
+builder.Services.AddSingleton<IDocumentationIndexer, MarkdownDocumentationIndexer>();
+builder.Services.AddSingleton<IDocumentationSearcher, LuceneDocumentationSearcher>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+// Register our MCP endpoints
+app.MapMcpEndpoints();
+
+app.Run();
+```
+
+Nothing too fancy here—just a standard ASP.NET Core setup with our MCP-specific additions.
+
+## Building the Documentation Indexer
+
+Now for the interesting part: indexing all those markdown files that your team has diligently written (or, more likely, hastily cobbled together the night before a release).
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+
+public class MarkdownDocumentationIndexer : IDocumentationIndexer
+{
+    private readonly string _docsDirectory;
+    private readonly IDocumentationSearcher _searcher;
+    
+    public MarkdownDocumentationIndexer(IConfiguration config, IDocumentationSearcher searcher)
+    {
+        _docsDirectory = config["Documentation:Path"] ?? throw new ArgumentNullException("Documentation path not configured");
+        _searcher = searcher ?? throw new ArgumentNullException(nameof(searcher));
+    }
+    
+    public async Task IndexAllDocumentsAsync()
+    {
+        // Clear previous index
+        await _searcher.ClearIndexAsync();
+        
+        // Find all markdown files
+        var markdownFiles = Directory.GetFiles(_docsDirectory, "*.md", SearchOption.AllDirectories);
+        Console.WriteLine($"Found {markdownFiles.Length} markdown files to index.");
+        
+        foreach (var file in markdownFiles)
+        {
+            try
+            {
+                var content = await File.ReadAllTextAsync(file);
+                var document = ParseMarkdownDocument(file, content);
+                await _searcher.IndexDocumentAsync(document);
+                Console.WriteLine($"Indexed: {document.Title}");
+            }
+            catch (Exception ex)
+            {
+                // Log the exception but continue with other files
+                Console.WriteLine($"Error indexing {file}: {ex.Message}");
+            }
+        }
+        
+        await _searcher.CommitIndexAsync();
+        Console.WriteLine("Indexing complete!");
+    }
+    
+    private DocumentModel ParseMarkdownDocument(string filePath, string content)
+    {
+        var relativePath = Path.GetRelativePath(_docsDirectory, filePath);
+        var category = Path.GetDirectoryName(relativePath)?.Replace(Path.DirectorySeparatorChar, '/');
+        
+        // Extract title from frontmatter or first heading
+        var titleMatch = Regex.Match(content, @"^---\s*\n.*?title:\s*""([^""]+)"".*?---", 
+                          RegexOptions.Singleline);
+        
+        var title = titleMatch.Success 
+            ? titleMatch.Groups[1].Value 
+            : Regex.Match(content, @"^#\s+(.+)$", RegexOptions.Multiline).Groups[1].Value;
+        
+        if (string.IsNullOrEmpty(title))
+        {
+            title = Path.GetFileNameWithoutExtension(filePath);
+        }
+        
+        // Extract tags if available
+        var tagsMatch = Regex.Match(content, @"tags:\s*\[(.*?)\]", RegexOptions.Singleline);
+        var tags = tagsMatch.Success 
+            ? tagsMatch.Groups[1].Value.Split(',').Select(t => t.Trim(' ', '"', '\'')).ToArray() 
+            : Array.Empty<string>();
+        
+        return new DocumentModel
+        {
+            Id = relativePath,
+            Title = title,
+            Category = category ?? "Uncategorized",
+            Content = StripFrontMatter(content),
+            Tags = tags,
+            LastUpdated = File.GetLastWriteTimeUtc(filePath)
+        };
+    }
+    
+    private string StripFrontMatter(string content)
+    {
+        // Remove YAML frontmatter if present
+        return Regex.Replace(content, @"^---\s*\n.*?\n---\s*\n", "", RegexOptions.Singleline);
+    }
+}
+```
+
+This indexer scans your documentation folder, parses each markdown file (including fancy frontmatter), and adds it to a searchable index. The regex parsing might look a bit scary, but hey, that's what happens when you try to parse markdown without a proper parser.
+
+## Implementing the Search Functionality
+
+Next, let's implement the search functionality using Lucene.NET (because reinventing the search wheel is a terrible idea):
+
+```csharp
+using Lucene.Net.Analysis.Standard;
+using Lucene.Net.Documents;
+using Lucene.Net.Index;
+using Lucene.Net.QueryParsers;
+using Lucene.Net.Search;
+using Lucene.Net.Store;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class LuceneDocumentationSearcher : IDocumentationSearcher, IDisposable
+{
+    private readonly Directory _directory;
+    private readonly StandardAnalyzer _analyzer;
+    private readonly IndexWriter _writer;
+    
+    public LuceneDocumentationSearcher(IConfiguration config)
+    {
+        var indexPath = config["Documentation:IndexPath"] ?? "docs_index";
+        
+        // Create the index directory if it doesn't exist
+        if (!System.IO.Directory.Exists(indexPath))
+        {
+            System.IO.Directory.CreateDirectory(indexPath);
+        }
+        
+        _directory = FSDirectory.Open(indexPath);
+        _analyzer = new StandardAnalyzer(Lucene.Net.Util.Version.LUCENE_30);
+        
+        var writerConfig = new IndexWriterConfig(Lucene.Net.Util.Version.LUCENE_30, _analyzer)
+        {
+            OpenMode = OpenMode.CREATE_OR_APPEND
+        };
+        
+        _writer = new IndexWriter(_directory, writerConfig);
+    }
+    
+    public Task ClearIndexAsync()
+    {
+        return Task.Run(() => _writer.DeleteAll());
+    }
+    
+    public Task IndexDocumentAsync(DocumentModel document)
+    {
+        return Task.Run(() =>
+        {
+            var doc = new Document();
+            
+            // Add fields
+            doc.Add(new Field("id", document.Id, Field.Store.YES, Field.Index.NOT_ANALYZED));
+            doc.Add(new Field("title", document.Title, Field.Store.YES, Field.Index.ANALYZED));
+            doc.Add(new Field("category", document.Category, Field.Store.YES, Field.Index.NOT_ANALYZED));
+            doc.Add(new Field("content", document.Content, Field.Store.YES, Field.Index.ANALYZED));
+            
+            // Add tags as a multi-valued field
+            foreach (var tag in document.Tags)
+            {
+                doc.Add(new Field("tag", tag, Field.Store.YES, Field.Index.NOT_ANALYZED));
+            }
+            
+            // Add last updated date
+            doc.Add(new Field("lastUpdated", document.LastUpdated.ToString("o"), Field.Store.YES, Field.Index.NOT_ANALYZED));
+            
+            _writer.AddDocument(doc);
+        });
+    }
+    
+    public Task CommitIndexAsync()
+    {
+        return Task.Run(() =>
+        {
+            _writer.Commit();
+            // Create a new searcher after committing changes
+            _searcher = new IndexSearcher(_directory);
+        });
+    }
+    
+    private IndexSearcher _searcher;
+    
+    public async Task<IEnumerable<DocumentModel>> SearchAsync(string query, int maxResults = 10)
+    {
+        if (_searcher == null)
+        {
+            await CommitIndexAsync();
+        }
+        
+        return await Task.Run(() =>
+        {
+            var parser = new MultiFieldQueryParser(
+                Lucene.Net.Util.Version.LUCENE_30,
+                new[] { "title", "content", "tag" },
+                _analyzer);
+                
+            var luceneQuery = parser.Parse(query);
+            var hits = _searcher.Search(luceneQuery, maxResults).ScoreDocs;
+            
+            var results = new List<DocumentModel>();
+            foreach (var hit in hits)
+            {
+                var doc = _searcher.Doc(hit.Doc);
+                results.Add(new DocumentModel
+                {
+                    Id = doc.Get("id"),
+                    Title = doc.Get("title"),
+                    Category = doc.Get("category"),
+                    Content = doc.Get("content"),
+                    Tags = doc.GetValues("tag"),
+                    LastUpdated = DateTime.Parse(doc.Get("lastUpdated"))
+                });
+            }
+            
+            return results;
+        });
+    }
+    
+    public void Dispose()
+    {
+        _writer?.Dispose();
+        _analyzer?.Dispose();
+        _directory?.Dispose();
+    }
+}
+```
+
+If you're wondering why we're using Lucene.NET 3.0 in 2025, well, some things never change in the .NET ecosystem. (I'm kidding, of course—by 2025, we'll probably be on version 3.0.1.)
+
+## Exposing Documentation Through MCP Tools
+
+Now for the fun part—exposing this wealth of documentation to your AI assistant through MCP tools. We'll create three main tools:
+
+1. **Search** - Find documentation based on keywords
+2. **GetCategories** - List all documentation categories
+3. **GetDocumentDetails** - Get the full content of a specific document
+
+```csharp
+[ApiController]
+[Route("api/mcp")]
+public class McpToolsController : ControllerBase
+{
+    private readonly IDocumentationSearcher _searcher;
+    private readonly IDocumentationIndexer _indexer;
+    
+    public McpToolsController(IDocumentationSearcher searcher, IDocumentationIndexer indexer)
+    {
+        _searcher = searcher ?? throw new ArgumentNullException(nameof(searcher));
+        _indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
+    }
+    
+    [McpTool("search", "Search documentation")]
+    [HttpGet("search")]
+    public async Task<ActionResult<McpSearchResponse>> Search([FromQuery] string query, [FromQuery] int maxResults = 10)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return BadRequest("Query parameter is required");
+        }
+        
+        try
+        {
+            var results = await _searcher.SearchAsync(query, maxResults);
+            
+            // Transform to MCP response format
+            var response = new McpSearchResponse
+            {
+                Results = results.Select(doc => new McpDocumentSummary
+                {
+                    Id = doc.Id,
+                    Title = doc.Title,
+                    Category = doc.Category,
+                    Snippet = TruncateContent(doc.Content, 150),
+                    Tags = doc.Tags
+                }).ToList()
+            };
+            
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error searching documentation: {ex.Message}");
+        }
+    }
+    
+    [McpTool("getCategories", "Get all documentation categories")]
+    [HttpGet("categories")]
+    public async Task<ActionResult<McpCategoriesResponse>> GetCategories()
+    {
+        try
+        {
+            // For simplicity, we'll just search with a wildcard and extract unique categories
+            var allDocs = await _searcher.SearchAsync("*", 1000);
+            var categories = allDocs
+                .Select(d => d.Category)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+                
+            return Ok(new McpCategoriesResponse { Categories = categories });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error getting categories: {ex.Message}");
+        }
+    }
+    
+    [McpTool("getDocumentDetails", "Get full document content by ID")]
+    [HttpGet("document/{id}")]
+    public async Task<ActionResult<McpDocumentDetailResponse>> GetDocumentDetails(string id)
+    {
+        try
+        {
+            // We'll use a direct ID search here
+            var results = await _searcher.SearchAsync($"id:\"{id}\"", 1);
+            var document = results.FirstOrDefault();
+            
+            if (document == null)
+            {
+                return NotFound($"Document with ID '{id}' not found");
+            }
+            
+            return Ok(new McpDocumentDetailResponse
+            {
+                Id = document.Id,
+                Title = document.Title,
+                Category = document.Category,
+                Content = document.Content,
+                Tags = document.Tags,
+                LastUpdated = document.LastUpdated
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error getting document details: {ex.Message}");
+        }
+    }
+    
+    private string TruncateContent(string content, int maxLength)
+    {
+        if (string.IsNullOrEmpty(content) || content.Length <= maxLength)
+        {
+            return content;
+        }
+        
+        return content.Substring(0, maxLength) + "...";
+    }
+    
+    // Bonus tool: Force re-indexing of documentation
+    [McpTool("reindexDocumentation", "Re-index all documentation files")]
+    [HttpPost("reindex")]
+    public async Task<ActionResult> ReindexDocumentation()
+    {
+        try
+        {
+            await _indexer.IndexAllDocumentsAsync();
+            return Ok(new { message = "Documentation re-indexed successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error re-indexing documentation: {ex.Message}");
+        }
+    }
+}
+```
+
+The `[McpTool]` attribute is our magical future attribute that exposes these endpoints as tools that an AI assistant can discover and use. Think of it as Swagger, but for AIs instead of humans.
+
+## Deploying and Configuring Your MCP Server
+
+Now that we have our server code, let's talk about deployment. You'll want to:
+
+1. Build and publish your C# project
+2. Set up the appropriate configuration
+3. Ensure your documentation folder is accessible
+4. Register your MCP server with your AI assistant
+
+Here's a simple script to deploy your MCP server:
+
+```csharp
+// Deploy.cs - A simple deployment script for our MCP server
+using System;
+using System.Diagnostics;
+using System.IO;
+
+public class Deploy
+{
+    public static void Main(string[] args)
+    {
+        // Parse command line arguments
+        var targetEnvironment = args.Length > 0 ? args[0] : "development";
+        var docsPath = args.Length > 1 ? args[1] : Path.Combine(Environment.CurrentDirectory, "docs");
+        
+        Console.WriteLine($"Deploying MCP server to {targetEnvironment} environment...");
+        Console.WriteLine($"Documentation path: {docsPath}");
+        
+        // 1. Build the project
+        Console.WriteLine("Building project...");
+        var buildProcess = Process.Start(new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = "publish -c Release -o ./publish",
+            RedirectStandardOutput = true,
+            UseShellExecute = false
+        });
+        
+        buildProcess.WaitForExit();
+        if (buildProcess.ExitCode != 0)
+        {
+            Console.WriteLine("Build failed!");
+            return;
+        }
+        
+        // 2. Create the appropriate appsettings.{environment}.json
+        Console.WriteLine("Creating configuration...");
+        var configPath = Path.Combine("publish", $"appsettings.{targetEnvironment}.json");
+        var config = @$"{{
+  ""Logging"": {{
+    ""LogLevel"": {{
+      ""Default"": ""Information"",
+      ""Microsoft.AspNetCore"": ""Warning""
+    }}
+  }},
+  ""Documentation"": {{
+    ""Path"": ""{docsPath.Replace("\\", "\\\\")}"",
+    ""IndexPath"": ""docs_index_{targetEnvironment}"",
+    ""ApiVersion"": ""1.0""
+  }},
+  ""AllowedHosts"": ""*""
+}}";
+
+        File.WriteAllText(configPath, config);
+        Console.WriteLine($"Configuration written to {configPath}");
+        
+        // 3. Set up as a service (simplified for this example)
+        Console.WriteLine("Deployment complete! To start the server, run:");
+        Console.WriteLine("cd publish");
+        Console.WriteLine($"dotnet DevDocsMcpServer.dll --environment {targetEnvironment}");
+        
+        Console.WriteLine("\nTo register with your AI assistant, use the following endpoint:");
+        Console.WriteLine("https://localhost:5001/api/mcp");
+    }
+}
+```
+
+## Connecting to Your AI Assistant
+
+The final step is connecting your MCP server to your favorite AI coding assistant. This will vary depending on which assistant you're using, but most will have some way to register custom tools or plugins.
+
+```csharp
+// This is pseudo-code for registering your MCP server with an AI assistant
+public class AssistantSetup
+{
+    public void RegisterMcpServer()
+    {
+        var assistant = AiAssistant.GetInstance();
+        
+        assistant.RegisterMcpServer(
+            name: "Internal Documentation",
+            endpoint: "https://localhost:5001/api/mcp",
+            description: "Custom documentation for internal libraries",
+            // Optional authentication
+            authType: McpAuthType.ApiKey,
+            apiKey: Environment.GetEnvironmentVariable("MCP_API_KEY")
+        );
+        
+        Console.WriteLine("MCP server registered with AI assistant!");
+        Console.WriteLine("Try asking your assistant about your internal libraries now.");
+    }
+}
+```
+
+## Conclusion: Documentation That Actually Gets Read
+
+Congratulations! You've built an MCP server that transforms your dusty, forgotten documentation into a valuable resource for your AI assistant. Now when you or your team asks your AI assistant about your internal libraries, it can actually provide helpful, accurate answers.
+
+No more "sorry, I don't know about your custom code" responses. No more digging through outdated wikis. And best of all, no more excuses for not writing documentation—after all, it's now directly useful to your AI assistant, which means it's useful to you.
+
+Remember, the documentation you write today is a gift to your future self—especially when that documentation is accessible through an AI assistant that can understand, summarize, and apply it to your specific problems.
+
+Now go forth and document! Your future self (and your AI assistant) will thank you.
+
+---
+
+*P.S. If you're wondering whether all this effort to build an MCP server for documentation is worth it, just ask yourself: how many hours have I spent trying to figure out how to use my team's libraries? Now multiply that by your hourly rate. That's your ROI right there.*

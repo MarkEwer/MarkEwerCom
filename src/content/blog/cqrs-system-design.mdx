@@ -1,0 +1,106 @@
+---
+title: "CQRS System Design"
+date: "2018-09-14"
+author: "Mark Ewer"
+slug: "cqrs-system-design"
+description: "A presentation on designing and building a system for a major automotive parts sales company using the CQRS design pattern."
+tags: ["cqrs", "architecture", "system-design", "event-sourcing"]
+images: [
+  "/images/blog/Slide1.png",
+  "/images/blog/Slide2.png",
+  "/images/blog/Slide3.png",
+  "/images/blog/Slide5.png",
+  "/images/blog/Slide6.png",
+  "/images/blog/Slide7.png",
+  "/images/blog/Slide8.png",
+  "/images/blog/Slide9.png",
+  "/images/blog/Slide10.png",
+  "/images/blog/Slide11.png",
+  "/images/blog/Slide12.png",
+  "/images/blog/Slide13.png"
+]
+---
+
+I recently had the opportunity to design and build a system for a major automotive parts sales company using the CQRS design pattern. Below you can see the slides from a presentation I gave on the system architecture and how all the parts work together.
+
+## Introduction
+
+![CQRS Architecture Overview](/images/blog/CQRS-Image.png)
+
+## Core Architecture
+
+Here is the core architecture diagram showing all the major components in the software:
+
+![Core Architecture Diagram](/images/blog/Slide2.png)
+
+## Technology Stack
+
+Next, I annotate each component to show the technology used for each item:
+
+![Technology Stack](/images/blog/Slide3.png)
+
+## REST API Implementation
+
+Here is an example of one of the REST APIs. For this, I used the [NancyFX](http://www.nancyfx.org/) framework to create REST/JSON endpoints for commands and queries. Note how the API endpoint is only responsible for DTO deserialization and the work is delegated to the Command Bus.
+
+![REST API Example](/images/blog/Slide5.png)
+
+## Command Bus Pattern
+
+The command bus invokes the appropriate command handler for this particular action:
+
+![Command Bus](/images/blog/Slide6.png)
+
+## Domain Objects and Event Sourcing
+
+Handlers will then find and call methods on the affected Aggregate Root domain objects. All domain objects are Event Sourced, so they use the Emit/Apply pattern internally to track all state changes:
+
+![Domain Objects](/images/blog/Slide7.png)
+
+## Event Storage
+
+All the events are stored in SQL Server as binary serialized objects. This makes it quick to save changes and simple to restore domain entities by "playing back" the events for that entity in order:
+
+![Event Storage](/images/blog/Slide8.png)
+
+## Event Bus and View Locator
+
+After the event is applied to the entity, it is routed to the Event Bus. The Event Bus uses a concept of a View Locator to find and relay the event to all of the event handlers that are affected by this event:
+
+![Event Bus](/images/blog/Slide9.png)
+
+## Event-Sourced Views
+
+The event handler creates an event-sourced view. Each view represents one ViewModel used by the client application:
+
+![Event-Sourced Views](/images/blog/Slide10.png)
+
+## View Managers
+
+The views are managed by View Manager classes. In this case, we used the Microsoft SQL Server view manager to persist the view model content directly into SQL Server tables:
+
+![View Managers](/images/blog/Slide11.png)
+
+## SQL Server Tables
+
+And here is an example of one of the SQL Server tables:
+
+![SQL Server Tables](/images/blog/Slide12.png)
+
+## Query Implementation
+
+The REST API supports both commands and queries, of course. The Queries use a simple Micro ORM called PetaPoco to perform queries against the SQL Server tables created by the views. Since these tables are essentially read-only from this API, the methods in the Read API are very simple and fast:
+
+![Query Implementation](/images/blog/Slide13.png)
+
+## Conclusion
+
+That should give you a good overview of how the system was constructed. The CQRS pattern allowed us to:
+
+- **Separate Concerns**: Commands and queries are handled by different parts of the system
+- **Scale Independently**: Read and write sides can be scaled based on actual usage patterns
+- **Event Sourcing Benefits**: Complete audit trail and ability to replay events for debugging
+- **Performance**: Optimized read models for specific query patterns
+- **Flexibility**: Easy to add new read models without affecting the write side
+
+This architecture proved to be very effective for the automotive parts company's complex business requirements and high-performance needs.

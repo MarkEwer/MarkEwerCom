@@ -1,0 +1,30 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc"/>
+  
+  <!-- Plan A sign -->
+  <rect x="80" y="80" width="80" height="50" fill="#dc2626" stroke="#b91c1c" stroke-width="2" rx="5"/>
+  <text x="120" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">PLAN A</text>
+  <text x="120" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">FAILED</text>
+  
+  <!-- Big X over Plan A -->
+  <line x1="90" y1="90" x2="150" y2="120" stroke="#7f1d1d" stroke-width="4"/>
+  <line x1="150" y1="90" x2="90" y2="120" stroke="#7f1d1d" stroke-width="4"/>
+  
+  <!-- Plan B sign (highlighted) -->
+  <rect x="240" y="80" width="80" height="50" fill="#16a34a" stroke="#15803d" stroke-width="3" rx="5"/>
+  <text x="280" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">PLAN B</text>
+  <text x="280" y="115" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">ACTIVE</text>
+  
+  <!-- Arrow pointing to Plan B -->
+  <polygon points="200,105 230,105 225,95 225,115" fill="#16a34a"/>
+  
+  <!-- Feedback loop -->
+  <path d="M 120 150 Q 200 180 280 150" stroke="#7c3aed" stroke-width="3" fill="none"/>
+  <polygon points="285,145 295,150 285,155" fill="#7c3aed"/>
+  <text x="200" y="175" text-anchor="middle" fill="#7c3aed" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Feedback Loop</text>
+  
+  <!-- Title -->
+  <text x="200" y="30" text-anchor="middle" fill="#1f2937" font-family="Arial, sans-serif" font-size="18" font-weight="bold">Always Have a Plan B</text>
+  <text x="200" y="50" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="12">Agile adaptation through feedback</text>
+</svg>
