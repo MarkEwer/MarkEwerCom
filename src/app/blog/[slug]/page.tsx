@@ -101,11 +101,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <CardContent className="prose prose-lg prose-violet max-w-none">
             {/* Blog Post Banner Image (moved below headers) */}
             {post.metadata.image && (
-              <div className="mb-8 w-full">
+              <div className="mb-8 w-full flex justify-center">
                 <img
                   src={post.metadata.image}
                   alt={post.metadata.title}
-                  className="w-full h-64 object-cover rounded-xl shadow-lg border border-violet-100"
+                  className="max-w-full max-h-48 object-contain rounded-xl shadow-lg border border-violet-100"
                   style={{ background: '#F5F7FA' }}
                 />
               </div>

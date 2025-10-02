@@ -1,5 +1,12 @@
 [
   {
+    "title": "Getting Started with GitHub Spec-Kit",
+    "date": "2025-10-02",
+    "slug": "getting-started-with-github-spec-kit",
+    "description": "Learn how to get started with GitHub Spec-Kit, a tool for specification-driven development that helps teams build better software through structured workflows.",
+    "tags": ["spec-kit", "github", "specification-driven-development", "workflow", "software-development"]
+  },
+  {
     "title": "Agile Principle #12",
     "date": "2018-11-02",
     "slug": "agile-principle-12",
