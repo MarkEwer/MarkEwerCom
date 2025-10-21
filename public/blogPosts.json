@@ -1,5 +1,12 @@
 [
   {
+    "title": "Hexagonal Architecture - \"Ports & Adapters\"",
+    "date": "2025-10-20",
+    "slug": "hexagonal-architecture-ports-and-adapters",
+    "description": "Overview of Hexagonal Architecture (Ports & Adapters) and how to structure C# full-stack projects for testability and separation of concerns.",
+    "tags": ["architecture", "csharp", "hexagonal", "ports-and-adapters"]
+  },
+  {
     "title": "Getting Started with GitHub Spec-Kit",
     "date": "2025-10-02",
     "slug": "getting-started-with-github-spec-kit",

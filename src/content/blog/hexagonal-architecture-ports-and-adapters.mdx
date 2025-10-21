@@ -1,0 +1,287 @@
+---
+title: "Hexagonal Architecture – \"Ports & Adapters\""
+date: "2025-10-20"
+author: "Mark Ewer"
+slug: "hexagonal-architecture-ports-and-adapters"
+description: "Hexagonal Architecture (Ports & Adapters): structuring a C# full-stack application for testability and separation of concerns."
+image: "/images/blog/hexagonal-architecture/hero.svg"
+tags: ["architecture","csharp","hexagonal","ports-and-adapters"]
+---
+
+## Hexagonal Architecture – “Ports & Adapters”
+
+Hexagonal Architecture (also called **Ports & Adapters**) is a way of structuring an application so that the *business core* is completely isolated from the details of how it’s invoked (UI, API, CLI, etc.) and how it accesses external resources (databases, file systems, third‑party services, …).  
+
+The idea is simple:
+
+| Layer | What lives here? | How does it communicate? |
+|-------|------------------|--------------------------|
+| **Domain / Application Core** | Entities, value objects, use‑cases (services), domain rules, business logic. | Calls *ports* (interfaces) that describe required operations. |
+| **Ports** | Pure C# interfaces that express the needs of the core (e.g., `IUserRepository`, `ISendEmail`). | The core depends only on these abstractions; it knows nothing about concrete implementations. |
+| **Adapters** | Concrete classes that implement ports. Two families: <br />• *Driving adapters* – UI, API controllers, CLI, message consumers that **call** the core.<br />• *Driven adapters* – EF Core repositories, HTTP clients, file I/O, email services that the core **calls** through ports. | Adapters depend on the core (they implement or use its interfaces) but the core does not depend on them. |
+| **Infrastructure / Outer Circle** | Framework‑specific code (ASP.NET Core middleware, EF Core DbContext, DI container configuration). | Usually just wiring; never contains business rules. |
+
+Visually:
+
+```
+   +-------------------+        Driving Adapter
+   |  UI / API / CLI   |  <--->  Controllers, Handlers
+   +-------------------+
+            |
+            v
+   +-------------------+        Application Core
+   |   Use‑Case/Service| <----> Ports (IUserRepo, IEmailSender…)
+   +-------------------+
+            ^
+            |
+   +-------------------+        Driven Adapter
+   |  EF Core / HTTP   |  <---> Repositories, HttpClients
+   +-------------------+
+```
+
+The **core** is at the center of a hexagon; each side of the hexagon represents a *port* (an interface). Anything that wants to talk to the core must go through one of those ports. The concrete adapters sit on the outside and translate between the external world and the port contracts.
+
+---
+
+## Why it matters for a **full‑stack C#** application
+
+| Concern | How Hexagonal Architecture helps |
+|---------|-----------------------------------|
+| **Testability** | Since the core depends only on interfaces, you can unit‑test use‑cases by injecting fakes/mocks (e.g., an `IUserRepository` mock) without starting ASP.NET Core, a real DB, or external services. |
+| **Separation of concerns** | UI (Razor pages, Blazor components, MVC controllers), API layer, background workers, and persistence are all *adapters*. Changing one (e.g., swapping EF Core for Dapper) never touches business logic. |
+| **Technology agnosticism** | The core is pure .NET Standard/.NET 8 class library – it can be reused in a console app, Azure Function, desktop WPF/WinUI, or even a mobile Xamarin/MAUI project. |
+| **Easier evolution** | Adding a new way to expose the system (e.g., gRPC) only means writing another driving adapter that calls the same use‑case services. |
+| **Clear dependency direction** | No “leaky abstractions”: UI → core → ports → adapters. The outer layers can depend on the inner ones, but never the opposite. This avoids circular references and makes DI wiring straightforward. |
+
+---
+
+## Concrete Layout for a C# Full‑Stack Project
+
+Below is a typical folder/solution structure that follows Hexagonal Architecture.
+
+```
+MyApp.sln
+│
+├─ src/
+│   ├─ MyApp.Core/                 # <-- Application Core (Domain + Use Cases)
+│   │    ├─ Entities/
+│   │    ├─ ValueObjects/
+│   │    ├─ Services/               # Use‑case orchestrators
+│   │    └─ Ports/
+│   │         ├─ ICustomerRepository.cs
+│   │         └─ IEmailSender.cs
+│   │
+│   ├─ MyApp.Adapters.WebApi/      # Driving adapter (ASP.NET Core)
+│   │    ├─ Controllers/
+│   │    ├─ Dtos/
+│   │    └─ Startup.cs (or Program.cs) – registers DI, maps routes
+│   │
+│   ├─ MyApp.Adapters.Persistence/ # Driven adapter (EF Core, Dapper, etc.)
+│   │    ├─ EF/
+│   │    │    ├─ AppDbContext.cs
+│   │    │    └─ Migrations/
+│   │    └─ Repositories/
+│   │         └─ CustomerRepository.cs : ICustomerRepository
+│   │
+│   ├─ MyApp.Adapters.Email/       # Driven adapter (SMTP, SendGrid, etc.)
+│   │    └─ SmtpEmailSender.cs : IEmailSender
+│   │
+│   └─ MyApp.UI.Blazor/            # Optional second driving adapter (SPA)
+│        └─ Pages/, Components/
+│
+└─ tests/
+     ├─ MyApp.Core.Tests/
+     │    └─ ServiceTests.cs  (uses mocks for ports)
+     ├─ MyApp.Adapters.Persistence.IntegrationTests/
+     │    └─ EfRepositoryTests.cs (real DB or SQLite in‑memory)
+     └─ MyApp.Adapters.WebApi.IntegrationTests/
+          └─ ControllersTests.cs (TestServer, HttpClient)
+```
+
+### Key points in the layout
+
+| Layer | Typical contents |
+|-------|------------------|
+| **Core** (`MyApp.Core`) | Plain C# class library targeting `net8.0` or `netstandard2.1`. No NuGet packages that tie it to ASP.NET Core, EF Core, etc., except maybe `System.ComponentModel.DataAnnotations` for validation (still pure). |
+| **Ports** | Interfaces only; placed in a sub‑namespace (`MyApp.Core.Ports`). Naming convention: `I<Something>Port` or just `I<Something>` (e.g., `ICustomerRepository`). |
+| **Driving adapters** (`WebApi`, `Blazor`) | Reference the Core project. Controllers/Pages receive services via constructor injection, call use‑case methods. They also map DTOs ↔ domain models. |
+| **Driven adapters** (`Persistence`, `Email`) | Implement the port interfaces. These projects reference both Core (for the interface) and the concrete technology (EF Core, MailKit, etc.). |
+| **Tests** | Unit tests target only Core (no infrastructure). Integration tests spin up the outer layers if needed. |
+
+---
+
+## Step‑by‑step Example: “Register a New Customer”
+
+### 1️⃣ Define the Port
+
+```csharp
+// MyApp.Core/Ports/ICustomerRepository.cs
+public interface ICustomerRepository
+{
+    Task<Customer> AddAsync(Customer customer, CancellationToken ct = default);
+    Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
+}
+```
+
+### 2️⃣ Write the Use‑Case (Application Service)
+
+```csharp
+// MyApp.Core/Services/RegisterCustomerService.cs
+public sealed class RegisterCustomerService
+{
+    private readonly ICustomerRepository _repo;
+    private readonly IEmailSender      _emailSender;
+
+    public RegisterCustomerService(ICustomerRepository repo,
+                                   IEmailSender emailSender)
+    {
+        _repo = repo;
+        _emailSender = emailSender;
+    }
+
+    public async Task<RegisterResult> ExecuteAsync(RegisterDto dto,
+                                                    CancellationToken ct = default)
+    {
+        if (await _repo.EmailExistsAsync(dto.Email, ct))
+            return RegisterResult.Failure("Email already in use.");
+
+        var customer = new Customer(dto.Name, dto.Email);
+        await _repo.AddAsync(customer, ct);
+
+        // fire‑and‑forget or await depending on requirements
+        await _emailSender.SendWelcomeAsync(customer.Email, ct);
+
+        return RegisterResult.Success(customer.Id);
+    }
+}
+```
+
+*The service knows nothing about EF Core, HTTP, MVC, etc. It only talks to the two ports.*
+
+### 3️⃣ Implement a Driven Adapter (EF Core)
+
+```csharp
+// MyApp.Adapters.Persistence/Repositories/EfCustomerRepository.cs
+public sealed class EfCustomerRepository : ICustomerRepository
+{
+    private readonly AppDbContext _ctx;
+    public EfCustomerRepository(AppDbContext ctx) => _ctx = ctx;
+
+    public async Task<Customer> AddAsync(Customer customer, CancellationToken ct = default)
+        => (await _ctx.Customers.AddAsync(customer, ct)).Entity;
+
+    public Task<bool> EmailExistsAsync(string email, CancellationToken ct = default)
+        => _ctx.Customers.AnyAsync(c => c.Email == email, ct);
+}
+```
+
+### 4️⃣ Implement a Driving Adapter (ASP.NET Core Controller)
+
+```csharp
+// MyApp.Adapters.WebApi/Controllers/CustomersController.cs
+[ApiController]
+[Route("api/customers")]
+public class CustomersController : ControllerBase
+{
+    private readonly RegisterCustomerService _register;
+
+    public CustomersController(RegisterCustomerService register)
+        => _register = register;
+
+    [HttpPost]
+    public async Task<IActionResult> Register([FromBody] RegisterDto dto,
+                                              CancellationToken ct)
+    {
+        var result = await _register.ExecuteAsync(dto, ct);
+        return result.IsSuccess
+            ? CreatedAtRoute("GetCustomer", new { id = result.CustomerId }, null)
+            : BadRequest(new { error = result.ErrorMessage });
+    }
+}
+```
+
+### 5️⃣ Wire Everything in the outermost layer
+
+```csharp
+// MyApp.Adapters.WebApi/Program.cs (ASP.NET Core 8 minimal hosting)
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Core services
+builder.Services.AddScoped<RegisterCustomerService>();
+
+// Ports → adapters
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>(); // another driven adapter
+
+var app = builder.Build();
+
+app.MapControllers();
+app.Run();
+```
+
+*Notice that the **core** never appears in `Program.cs`; only the outer layer knows about DI containers and concrete implementations.*
+
+---
+
+## Testing the Core (Unit Test)
+
+```csharp
+// MyApp.Core.Tests/RegisterCustomerServiceTests.cs
+public class RegisterCustomerServiceTests
+{
+    [Fact]
+    public async Task Should_Fail_When_Email_Already_Exists()
+    {
+        // Arrange
+        var repoMock = new Mock<ICustomerRepository>();
+        repoMock.Setup(r => r.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+        var emailSenderMock = new Mock<IEmailSender>();
+
+        var service = new RegisterCustomerService(repoMock.Object,
+                                                  emailSenderMock.Object);
+
+        // Act
+        var result = await service.ExecuteAsync(new RegisterDto { Email = "test@x.com", Name = "Bob" });
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        repoMock.Verify(r => r.AddAsync(It.IsAny<Customer>(), It.IsAny<CancellationToken>()), Times.Never);
+        emailSenderMock.Verify(e => e.SendWelcomeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+```
+
+No database, no web server – just pure C# and mocks. That’s the power of Hexagonal Architecture.
+
+---
+
+## Common Pitfalls & Tips for C# Projects
+
+| Issue | How to avoid / fix |
+|-------|--------------------|
+| **Leaking infrastructure into the core** (e.g., using `DbContext` directly) | Keep only plain POCOs and interfaces in `MyApp.Core`. If you need validation attributes, use ones that are framework‑agnostic (`System.ComponentModel.DataAnnotations`). |
+| **Too many ports** – ending up with a “port for every method” | Group related responsibilities: one repository per aggregate, one service interface per external capability (email, payment). |
+| **Circular dependencies** (driven adapter referencing core and vice‑versa) | The direction should always be *outer → inner* (adapters depend on core, not the opposite). Use `ProjectReference` only from adapters to core. |
+| **DI registration explosion** | Use extension methods in each adapter project, e.g., `services.AddPersistence(this IConfiguration cfg)` that registers its own implementations. Then the outermost layer just calls those extensions. |
+| **Testing async code with EF Core In‑Memory provider** – sometimes behaves differently from a real relational DB | Prefer SQLite in‑memory for integration tests; it respects constraints (FK, unique indexes) better than `UseInMemoryDatabase`. |
+| **Versioning ports** – changing an interface can break many adapters | Apply the “stable contract” principle: add new methods to a *new* interface (`IEmailSenderV2`) and keep the old one for backward compatibility until you migrate all adapters. |
+
+---
+
+## TL;DR Summary
+
+1. **Core (Domain + Use Cases)** lives in its own class library, depends only on **port interfaces**.
+2. **Ports** are pure C# contracts that describe what the core needs or offers.
+3. **Adapters** implement those ports:
+   * **Driving adapters** – UI, API controllers, CLI commands that call the core.
+   * **Driven adapters** – persistence, email, external APIs that the core calls through ports.
+4. The outermost layer (ASP.NET Core startup, Blazor host, Azure Function entry point) wires everything via DI; it knows about concrete implementations but never touches business logic.
+5. Result: highly testable, framework‑agnostic core, easy to swap UI or infrastructure, and a clean separation that scales from simple prototypes to large enterprise systems.
+
+Applying this pattern to a full‑stack C# application means you end up with a set of small, focused projects that can evolve independently while keeping the business rules in one place—exactly what modern .NET teams need for maintainable, future‑proof software.
