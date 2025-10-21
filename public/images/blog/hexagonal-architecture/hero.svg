@@ -1,29 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600" fill="none">
   <defs>
+    <!-- Background gradient -->
     <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#7c3aed" />
       <stop offset="0.5" stop-color="#a855f7" />
       <stop offset="1" stop-color="#c084fc" />
     </linearGradient>
+
+    <!-- Hexagon fill gradient -->
     <linearGradient id="hexGrad" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#8b5cf6" />
       <stop offset="1" stop-color="#7c3aed" />
     </linearGradient>
+
+    <!-- Larger repeating hexagon pattern -->
+    <!-- Tile is 160x184 to make hexagons larger and readable at smaller sizes -->
+    <pattern id="hexPattern" width="160" height="184" patternUnits="userSpaceOnUse">
+      <!-- Row A -->
+      <g>
+        <g transform="translate(40,92)">
+          <!-- larger outer hexagon with stronger fill and violet stroke -->
+            <!-- subtle white border behind the hexagon -->
+            <polygon points="0,-72 61,-36 61,36 0,72 -61,36 -61,-36" fill="#ffffff" opacity="0.10" />
+            <polygon points="0,-72 61,-36 61,36 0,72 -61,36 -61,-36" fill="url(#hexGrad)" opacity="0.36" stroke="#6b21a8" stroke-opacity="0.28" stroke-width="2" />
+            <polygon points="0,-46 40,-24 40,24 0,46 -40,24 -40,-24" fill="#ffffff" opacity="0.08" />
+        </g>
+      </g>
+      <!-- Row B (offset) -->
+      <g>
+        <g transform="translate(120,92)">
+          <polygon points="0,-72 61,-36 61,36 0,72 -61,36 -61,-36" fill="url(#hexGrad)" opacity="0.32" stroke="#6b21a8" stroke-opacity="0.22" stroke-width="1.6" />
+          <polygon points="0,-46 40,-24 40,24 0,46 -40,24 -40,-24" fill="#ffffff" opacity="0.06" />
+            <polygon points="0,-72 61,-36 61,36 0,72 -61,36 -61,-36" fill="#ffffff" opacity="0.10" />
+          </g>
+      </g>
+    </pattern>
+
     <style>
       .title { font: 700 48px Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; fill: white }
-      .subtitle { font: 400 20px Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; fill: rgba(255,255,255,0.95) }
+      .subtitle { font: 400 20px Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; fill: rgba(255,255,255,0.95) } 
     </style>
   </defs>
+
+  <!-- Base gradient background with rounded corners -->
   <rect width="100%" height="100%" fill="url(#g)" rx="16" />
-  <!-- hexagon motif -->
+
+  <!-- Hexagon pattern overlay (subtle, tiled) -->
+  <!-- Use two layered pattern rectangles with different opacities and slight transforms for depth -->
+  <!-- increase overlay opacity so hexes are visible but still subtle -->
+  <!-- overlay adjusted for larger hexes; keep it subtle but visible -->
+  <rect width="100%" height="100%" fill="url(#hexPattern)" opacity="0.26" rx="16" />
+  <rect width="100%" height="100%" fill="url(#hexPattern)" opacity="0.10" rx="16" transform="translate(8,12)" />
+
+  <!-- larger decorative motif hexagons -->
   <g transform="translate(1200,120) scale(1.2)" opacity="0.16">
     <polygon points="80,0 160,46 160,138 80,184 0,138 0,46" fill="url(#hexGrad)" opacity="0.18"/>
     <polygon points="80,40 140,72 140,112 80,144 20,112 20,72" fill="#ffffff" opacity="0.06"/>
   </g>
+
+  <!-- Title and subtitle -->
   <g transform="translate(120,160)">
     <text class="title">Hexagonal Architecture</text>
     <text x="0" y="62" class="subtitle">Ports &amp; Adapters — separating core business logic from infrastructure</text>
   </g>
+
   <!-- small icon cluster -->
   <g transform="translate(80,360)" opacity="0.95">
     <rect x="0" y="0" width="80" height="56" rx="8" fill="#ffffff" opacity="0.06"/>
