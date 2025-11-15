@@ -1,5 +1,12 @@
 [
   {
+    "title": ".NET 10: The Top 5 Game-Changing Features You Need to Know",
+    "date": "2025-11-15",
+    "slug": "dotnet-10-top-5-features",
+    "description": "Discover the most significant innovations in .NET 10, from AI-powered agent frameworks to C# 14 language enhancements. This LTS release brings revolutionary changes for modern application development.",
+    "tags": ["dotnet10", "csharp", "ai", "performance", "lts", "microsoft", "agent-framework", "extension-members", "field-keyword", "blazor", "entity-framework"]
+  },
+  {
     "title": "Hexagonal Architecture - \"Ports & Adapters\"",
     "date": "2025-10-20",
     "slug": "hexagonal-architecture-ports-and-adapters",
