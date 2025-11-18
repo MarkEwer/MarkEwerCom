@@ -1,5 +1,12 @@
 [
   {
+    "title": "Building a REST API with Akka.NET: The Actor Model Meets Event Sourcing",
+    "date": "2025-11-18",
+    "slug": "akka-net-rest-api",
+    "description": "Learn how to build a production-ready REST API using Akka.NET's actor model, Event Sourcing, and the Child-Per-Entity pattern with PostgreSQL persistence.",
+    "tags": ["akka-net", "actor-model", "event-sourcing", "rest-api", "csharp", "postgresql", "asp-net", "child-per-entity", "cqrs", "distributed-systems"]
+  },
+  {
     "title": ".NET 10: The Top 5 Game-Changing Features You Need to Know",
     "date": "2025-11-15",
     "slug": "dotnet-10-top-5-features",

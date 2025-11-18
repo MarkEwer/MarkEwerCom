@@ -1,0 +1,1051 @@
+---
+title: "Building a REST API with Akka.NET: The Actor Model Meets Event Sourcing"
+date: "2025-11-18"
+author: "Mark Ewer"
+slug: "akka-net-rest-api"
+description: "Learn how to build a production-ready REST API using Akka.NET's actor model, Event Sourcing, and the Child-Per-Entity pattern with PostgreSQL persistence."
+tags: ["Akka.NET", "Actor Model", "Event Sourcing", "REST API", "C#", "PostgreSQL", "ASP.NET", "Child-Per-Entity", "CQRS", "Distributed Systems"]
+image: "/images/blog/AkkaNetLogo.Normal.svg"
+---
+
+# Building a REST API with Akka.NET: The Actor Model Meets Event Sourcing
+
+Building scalable, concurrent applications has always been challenging. Traditional approaches using locks and shared state often lead to complex, error-prone code. Enter **Akka.NET** - a powerful toolkit that brings the Actor Model to .NET, enabling you to build highly concurrent, distributed systems with ease.
+
+In this comprehensive guide, we'll explore how to build a production-ready REST API using Akka.NET, incorporating Event Sourcing patterns and PostgreSQL persistence. By the end, you'll understand how actors can revolutionize your approach to building APIs.
+
+## What is the Actor Model?
+
+The **Actor Model** is a computational model that treats "actors" as the fundamental units of computation. Unlike traditional object-oriented programming where objects share state through methods and properties, actors:
+
+- **Encapsulate state**: Each actor manages its own private state that cannot be accessed directly by other actors
+- **Communicate via messages**: Actors interact exclusively through asynchronous message passing
+- **Process one message at a time**: Each actor processes messages sequentially, eliminating the need for locks
+- **Create other actors**: Actors can spawn child actors to delegate work
+- **Define behavior**: Actors can change how they respond to future messages
+
+This model provides several powerful benefits:
+
+### **Concurrency Without Locks**
+
+Traditional multi-threaded programming requires careful coordination with locks, semaphores, and other synchronization primitives. A single mistake can lead to deadlocks, race conditions, or data corruption. With the Actor Model, each actor processes messages sequentially, so you never need locks for its internal state.
+
+```csharp
+// Traditional approach - requires locking
+public class BankAccount
+{
+    private decimal _balance;
+    private readonly object _lock = new object();
+    
+    public void Deposit(decimal amount)
+    {
+        lock (_lock)
+        {
+            _balance += amount; // Must lock to prevent race conditions
+        }
+    }
+}
+
+// Actor approach - no locks needed
+public class BankAccountActor : ReceiveActor
+{
+    private decimal _balance;
+    
+    public BankAccountActor()
+    {
+        Receive<DepositMessage>(msg =>
+        {
+            _balance += msg.Amount; // Safe without locks!
+            Sender.Tell(new DepositSuccessMessage(_balance));
+        });
+    }
+}
+```
+
+### **Location Transparency**
+
+Actors can communicate whether they're in the same process, on the same machine, or distributed across a network. Your code remains the same regardless of where the actor lives:
+
+```csharp
+// Send a message to an actor - could be local or remote
+actorRef.Tell(new ProcessOrder(orderId));
+```
+
+### **Supervision and Fault Tolerance**
+
+Actors are organized in hierarchies where parent actors supervise their children. When a child actor fails, the parent can decide how to handle it:
+
+```csharp
+public class SupervisorActor : ReceiveActor
+{
+    protected override SupervisorStrategy SupervisorStrategy()
+    {
+        return new OneForOneStrategy(
+            maxNrOfRetries: 3,
+            withinTimeRange: TimeSpan.FromMinutes(1),
+            localOnlyDecider: ex =>
+            {
+                if (ex is RecoverableException)
+                    return Directive.Restart; // Restart the failed actor
+                return Directive.Stop; // Stop for unrecoverable errors
+            });
+    }
+}
+```
+
+## Introducing Akka.NET
+
+**Akka.NET** is a .NET port of the popular Akka framework from the JVM ecosystem. It provides:
+
+- **Actor System**: The runtime environment for managing actors
+- **Message Routing**: Sophisticated message routing and delivery patterns
+- **Clustering**: Built-in support for distributed actor systems
+- **Persistence**: Event sourcing and snapshotting for actors
+- **Streams**: Reactive streams for processing data pipelines
+- **Testability**: Comprehensive testing tools for actor systems
+
+### Why Use Akka.NET for REST APIs?
+
+You might wonder: "Why use actors for a REST API when frameworks like ASP.NET Core work fine?" Here are compelling reasons:
+
+**1. Natural State Management**: Each actor maintains its own state, making it perfect for modeling domain entities. No need for complex caching strategies or database locking.
+
+**2. Scalability**: Actors scale horizontally. Start with actors in a single process, then distribute them across multiple nodes as needed.
+
+**3. Resilience**: Supervisor hierarchies provide automatic fault recovery. A failing actor doesn't crash your entire application.
+
+**4. Event Sourcing**: Built-in support for event sourcing means your system records every state change as an event, enabling audit trails, time travel debugging, and more.
+
+**5. Back-pressure**: Akka's mailbox system naturally handles load, preventing your system from being overwhelmed.
+
+## Event Sourcing and Akka.Persistence.Sql
+
+**Event Sourcing** is a pattern where state changes are stored as a sequence of events rather than updating records in place. Instead of:
+
+```csharp
+// Traditional approach
+UPDATE addresses SET street = '123 Main St' WHERE id = 1
+```
+
+You store events:
+
+```csharp
+// Event sourcing approach
+INSERT INTO events (persistence_id, sequence_nr, event) VALUES 
+    ('address-1', 1, '{"Type":"AddressCreated","Street":"123 Main St"}'),
+    ('address-1', 2, '{"Type":"StreetUpdated","OldStreet":"123 Main St","NewStreet":"456 Oak Ave"}')
+```
+
+To reconstruct current state, you replay all events for that entity. This provides:
+
+- **Complete audit trail**: Every change is recorded
+- **Time travel**: Replay events to see state at any point in time
+- **Event-driven architecture**: Publish events to trigger other processes
+- **Debugging**: Reproduce bugs by replaying events
+
+**Akka.Persistence.Sql** integrates Event Sourcing with Akka.NET, providing:
+
+- **Journal**: Stores events (the event log)
+- **Snapshot Store**: Stores periodic state snapshots for performance
+- **Read Journal**: Queries events for CQRS read models
+- **Database Support**: PostgreSQL, SQL Server, MySQL, SQLite
+
+Here's how it works:
+
+```csharp
+public class AddressActor : ReceivePersistentActor
+{
+    public override string PersistenceId { get; }
+    
+    private AddressState _state = new();
+    
+    public AddressActor(string addressId)
+    {
+        PersistenceId = $"address-{addressId}";
+        
+        // Command handler
+        Command<CreateAddress>(cmd =>
+        {
+            var evt = new AddressCreated(cmd.Street, cmd.City, cmd.ZipCode);
+            
+            Persist(evt, e =>
+            {
+                UpdateState(e);
+                Sender.Tell(new AddressCreatedResponse(PersistenceId));
+            });
+        });
+        
+        // Event handler
+        Recover<AddressCreated>(evt => UpdateState(evt));
+    }
+    
+    private void UpdateState(AddressCreated evt)
+    {
+        _state = new AddressState
+        {
+            Street = evt.Street,
+            City = evt.City,
+            ZipCode = evt.ZipCode
+        };
+    }
+}
+```
+
+When you call `Persist`, Akka.Persistence.Sql:
+1. Writes the event to the PostgreSQL journal table
+2. Invokes your callback after successful persistence
+3. Makes the event available for recovery on actor restart
+
+## The Child-Per-Entity Pattern
+
+The **Child-Per-Entity pattern** is a core Akka design pattern where a parent actor manages child actors, with each child representing a single domain entity. Think of it as:
+
+```
+ParentActor (AddressBookActor)
+    ├── ChildActor (Address-1)
+    ├── ChildActor (Address-2)
+    └── ChildActor (Address-3)
+```
+
+The parent maintains a mapping of entity IDs to child actor references:
+
+```csharp
+public class AddressBookActor : ReceiveActor
+{
+    private readonly Dictionary<string, IActorRef> _addresses = new();
+    
+    public AddressBookActor()
+    {
+        Receive<CreateAddress>(cmd =>
+        {
+            if (!_addresses.ContainsKey(cmd.AddressId))
+            {
+                // Create child actor for this address
+                var child = Context.ActorOf(
+                    Props.Create(() => new AddressActor(cmd.AddressId)),
+                    $"address-{cmd.AddressId}");
+                
+                _addresses[cmd.AddressId] = child;
+            }
+            
+            // Forward message to child
+            _addresses[cmd.AddressId].Forward(cmd);
+        });
+    }
+}
+```
+
+### Benefits of Child-Per-Entity
+
+**1. Simplified Stateful Programming**
+
+Each entity has its own actor with its own state. No need to worry about concurrent access:
+
+```csharp
+// Each AddressActor handles its own state
+// Address-1 and Address-2 are processed concurrently without interference
+```
+
+**2. Reliable Routing**
+
+The parent actor provides a stable address for routing messages to entities:
+
+```csharp
+// Always route through parent
+addressBookActor.Tell(new UpdateAddress("address-123", newStreet));
+
+// Parent forwards to correct child
+```
+
+**3. Smaller Code Footprint**
+
+You don't need separate repository classes, caching layers, or complex state management:
+
+```csharp
+// No need for:
+// - IAddressRepository
+// - IAddressCache
+// - Locking mechanisms
+// - State synchronization
+
+// Just actors!
+```
+
+**4. Ideal Use Cases**
+
+- **Stream Processing**: Each stream or session gets an actor
+- **Real-time User Activity**: One actor per active user session
+- **Authentication Sessions**: Actor per session with timeout
+- **IoT Devices**: Actor per device for telemetry and control
+- **Game Entities**: Actor per player, NPC, or game object
+
+## Example: Building an Address Book REST API
+
+Let's build a complete Address Book REST API with Akka.NET, demonstrating all these concepts.
+
+### Project Setup
+
+First, create an ASP.NET Core Web API project and install the required packages:
+
+```bash
+dotnet new webapi -n AddressBookApi
+cd AddressBookApi
+dotnet add package Akka.Hosting
+dotnet add package Akka.Persistence.Sql
+dotnet add package Akka.Persistence.Sql.Hosting
+dotnet add package Npgsql
+```
+
+### Define Domain Events
+
+Events represent state changes in our system:
+
+```csharp
+// Events/AddressEvents.cs
+public abstract record AddressEvent;
+
+public record AddressCreated(
+    string Street,
+    string City,
+    string State,
+    string ZipCode
+) : AddressEvent;
+
+public record AddressUpdated(
+    string? Street,
+    string? City,
+    string? State,
+    string? ZipCode
+) : AddressEvent;
+
+public record AddressDeleted : AddressEvent;
+```
+
+### Define Commands and Responses
+
+Commands are messages that request state changes:
+
+```csharp
+// Messages/AddressMessages.cs
+public abstract record AddressCommand(string AddressId);
+
+public record CreateAddress(
+    string AddressId,
+    string Street,
+    string City,
+    string State,
+    string ZipCode
+) : AddressCommand(AddressId);
+
+public record UpdateAddress(
+    string AddressId,
+    string? Street,
+    string? City,
+    string? State,
+    string? ZipCode
+) : AddressCommand(AddressId);
+
+public record GetAddress(string AddressId) : AddressCommand(AddressId);
+
+public record DeleteAddress(string AddressId) : AddressCommand(AddressId);
+
+// Responses
+public abstract record AddressResponse;
+
+public record AddressCreatedResponse(string AddressId) : AddressResponse;
+
+public record AddressUpdatedResponse(string AddressId) : AddressResponse;
+
+public record AddressDeletedResponse(string AddressId) : AddressResponse;
+
+public record AddressDetailsResponse(
+    string AddressId,
+    string Street,
+    string City,
+    string State,
+    string ZipCode
+) : AddressResponse;
+
+public record AddressNotFoundResponse(string AddressId) : AddressResponse;
+```
+
+### Create the Address State
+
+```csharp
+// Models/AddressState.cs
+public class AddressState
+{
+    public string Street { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string ZipCode { get; set; } = string.Empty;
+    public bool IsDeleted { get; set; }
+
+    public void Apply(AddressEvent evt)
+    {
+        switch (evt)
+        {
+            case AddressCreated created:
+                Street = created.Street;
+                City = created.City;
+                State = created.State;
+                ZipCode = created.ZipCode;
+                IsDeleted = false;
+                break;
+                
+            case AddressUpdated updated:
+                if (updated.Street != null) Street = updated.Street;
+                if (updated.City != null) City = updated.City;
+                if (updated.State != null) State = updated.State;
+                if (updated.ZipCode != null) ZipCode = updated.ZipCode;
+                break;
+                
+            case AddressDeleted:
+                IsDeleted = true;
+                break;
+        }
+    }
+}
+```
+
+### Implement the Address Actor
+
+The `AddressActor` is a persistent actor that stores events in PostgreSQL:
+
+```csharp
+// Actors/AddressActor.cs
+using Akka.Persistence;
+
+public class AddressActor : ReceivePersistentActor
+{
+    public override string PersistenceId { get; }
+    
+    private AddressState _state = new();
+    private bool _isInitialized;
+
+    public AddressActor(string addressId)
+    {
+        PersistenceId = $"address-{addressId}";
+        
+        // Commands are handled when the actor is active
+        Command<CreateAddress>(HandleCreateAddress);
+        Command<UpdateAddress>(HandleUpdateAddress);
+        Command<GetAddress>(HandleGetAddress);
+        Command<DeleteAddress>(HandleDeleteAddress);
+        
+        // Recovery handlers replay events on actor restart
+        Recover<AddressEvent>(evt =>
+        {
+            _state.Apply(evt);
+            _isInitialized = true;
+        });
+        
+        Recover<SnapshotOffer>(offer =>
+        {
+            if (offer.Snapshot is AddressState state)
+            {
+                _state = state;
+                _isInitialized = true;
+            }
+        });
+    }
+
+    private void HandleCreateAddress(CreateAddress cmd)
+    {
+        if (_isInitialized && !_state.IsDeleted)
+        {
+            Sender.Tell(new Status.Failure(new InvalidOperationException(
+                $"Address {cmd.AddressId} already exists")));
+            return;
+        }
+
+        var evt = new AddressCreated(cmd.Street, cmd.City, cmd.State, cmd.ZipCode);
+        
+        Persist(evt, e =>
+        {
+            _state.Apply(e);
+            _isInitialized = true;
+            
+            // Save snapshot every 10 events for performance
+            if (LastSequenceNr % 10 == 0)
+            {
+                SaveSnapshot(_state);
+            }
+            
+            Sender.Tell(new AddressCreatedResponse(cmd.AddressId));
+        });
+    }
+
+    private void HandleUpdateAddress(UpdateAddress cmd)
+    {
+        if (!_isInitialized || _state.IsDeleted)
+        {
+            Sender.Tell(new AddressNotFoundResponse(cmd.AddressId));
+            return;
+        }
+
+        var evt = new AddressUpdated(cmd.Street, cmd.City, cmd.State, cmd.ZipCode);
+        
+        Persist(evt, e =>
+        {
+            _state.Apply(e);
+            
+            if (LastSequenceNr % 10 == 0)
+            {
+                SaveSnapshot(_state);
+            }
+            
+            Sender.Tell(new AddressUpdatedResponse(cmd.AddressId));
+        });
+    }
+
+    private void HandleGetAddress(GetAddress cmd)
+    {
+        if (!_isInitialized || _state.IsDeleted)
+        {
+            Sender.Tell(new AddressNotFoundResponse(cmd.AddressId));
+            return;
+        }
+
+        Sender.Tell(new AddressDetailsResponse(
+            cmd.AddressId,
+            _state.Street,
+            _state.City,
+            _state.State,
+            _state.ZipCode
+        ));
+    }
+
+    private void HandleDeleteAddress(DeleteAddress cmd)
+    {
+        if (!_isInitialized || _state.IsDeleted)
+        {
+            Sender.Tell(new AddressNotFoundResponse(cmd.AddressId));
+            return;
+        }
+
+        var evt = new AddressDeleted();
+        
+        Persist(evt, e =>
+        {
+            _state.Apply(e);
+            SaveSnapshot(_state);
+            Sender.Tell(new AddressDeletedResponse(cmd.AddressId));
+        });
+    }
+}
+```
+
+### Implement the Address Book Parent Actor
+
+The parent actor manages all address child actors using the Child-Per-Entity pattern:
+
+```csharp
+// Actors/AddressBookActor.cs
+public class AddressBookActor : ReceiveActor
+{
+    private readonly Dictionary<string, IActorRef> _addresses = new();
+
+    public AddressBookActor()
+    {
+        Receive<AddressCommand>(cmd =>
+        {
+            var addressId = cmd.AddressId;
+            
+            // Get or create child actor for this address
+            if (!_addresses.TryGetValue(addressId, out var addressActor))
+            {
+                addressActor = Context.ActorOf(
+                    Props.Create(() => new AddressActor(addressId)),
+                    $"address-{addressId}");
+                
+                _addresses[addressId] = addressActor;
+            }
+            
+            // Forward message to the appropriate child actor
+            addressActor.Forward(cmd);
+        });
+    }
+
+    protected override SupervisorStrategy SupervisorStrategy()
+    {
+        return new OneForOneStrategy(
+            maxNrOfRetries: 3,
+            withinTimeRange: TimeSpan.FromMinutes(1),
+            localOnlyDecider: ex =>
+            {
+                // Log error
+                Context.GetLogger().Error(ex, "Address actor failed");
+                
+                // Restart the actor to recover from transient failures
+                return Directive.Restart;
+            });
+    }
+}
+```
+
+### Configure Akka.NET and PostgreSQL
+
+Set up Akka.Hosting with PostgreSQL persistence in `Program.cs`:
+
+```csharp
+// Program.cs
+using Akka.Hosting;
+using Akka.Persistence.Sql.Hosting;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add controllers
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configure Akka.NET with PostgreSQL persistence
+builder.Services.AddAkka("AddressBookSystem", (configBuilder, provider) =>
+{
+    configBuilder
+        .WithSqlPersistence(
+            connectionString: builder.Configuration.GetConnectionString("PostgreSQL")!,
+            providerName: LinqToDB.ProviderName.PostgreSQL15,
+            tagStorageMode: TagMode.Csv,
+            databaseMapping: DatabaseMapping.PostgreSql,
+            autoInitialize: true) // Automatically create tables
+        .WithActors((system, registry) =>
+        {
+            // Register the parent AddressBookActor
+            var addressBook = system.ActorOf(
+                Props.Create<AddressBookActor>(),
+                "address-book");
+            
+            registry.Register<AddressBookActor>(addressBook);
+        });
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+### Add Connection String
+
+In `appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "PostgreSQL": "Host=localhost;Port=5432;Database=addressbook;Username=postgres;Password=postgres"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Akka": "Information"
+    }
+  }
+}
+```
+
+### Create the REST API Controller
+
+Finally, create the ASP.NET Core controller that bridges HTTP requests to actor messages:
+
+```csharp
+// Controllers/AddressesController.cs
+using Akka.Actor;
+using Akka.Hosting;
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AddressesController : ControllerBase
+{
+    private readonly IActorRef _addressBook;
+
+    public AddressesController(IRequiredActor<AddressBookActor> addressBookActor)
+    {
+        _addressBook = addressBookActor.ActorRef;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateAddress([FromBody] CreateAddressRequest request)
+    {
+        var addressId = Guid.NewGuid().ToString();
+        
+        var command = new CreateAddress(
+            addressId,
+            request.Street,
+            request.City,
+            request.State,
+            request.ZipCode);
+
+        var response = await _addressBook.Ask<AddressResponse>(
+            command,
+            timeout: TimeSpan.FromSeconds(5));
+
+        return response switch
+        {
+            AddressCreatedResponse created => CreatedAtAction(
+                nameof(GetAddress),
+                new { id = created.AddressId },
+                new { id = created.AddressId }),
+            
+            Status.Failure failure => BadRequest(failure.Cause.Message),
+            
+            _ => StatusCode(500, "Unexpected response")
+        };
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetAddress(string id)
+    {
+        var query = new GetAddress(id);
+        
+        var response = await _addressBook.Ask<AddressResponse>(
+            query,
+            timeout: TimeSpan.FromSeconds(5));
+
+        return response switch
+        {
+            AddressDetailsResponse details => Ok(new
+            {
+                id = details.AddressId,
+                street = details.Street,
+                city = details.City,
+                state = details.State,
+                zipCode = details.ZipCode
+            }),
+            
+            AddressNotFoundResponse => NotFound(),
+            
+            _ => StatusCode(500, "Unexpected response")
+        };
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateAddress(
+        string id,
+        [FromBody] UpdateAddressRequest request)
+    {
+        var command = new UpdateAddress(
+            id,
+            request.Street,
+            request.City,
+            request.State,
+            request.ZipCode);
+
+        var response = await _addressBook.Ask<AddressResponse>(
+            command,
+            timeout: TimeSpan.FromSeconds(5));
+
+        return response switch
+        {
+            AddressUpdatedResponse => NoContent(),
+            AddressNotFoundResponse => NotFound(),
+            _ => StatusCode(500, "Unexpected response")
+        };
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteAddress(string id)
+    {
+        var command = new DeleteAddress(id);
+        
+        var response = await _addressBook.Ask<AddressResponse>(
+            command,
+            timeout: TimeSpan.FromSeconds(5));
+
+        return response switch
+        {
+            AddressDeletedResponse => NoContent(),
+            AddressNotFoundResponse => NotFound(),
+            _ => StatusCode(500, "Unexpected response")
+        };
+    }
+}
+
+// DTOs
+public record CreateAddressRequest(
+    string Street,
+    string City,
+    string State,
+    string ZipCode);
+
+public record UpdateAddressRequest(
+    string? Street,
+    string? City,
+    string? State,
+    string? ZipCode);
+```
+
+### Database Setup
+
+Akka.Persistence.Sql will automatically create the required tables when `autoInitialize: true` is set. The tables include:
+
+- **event_journal**: Stores all events
+- **metadata**: Tracks the highest sequence number per persistence ID
+- **snapshot_store**: Stores state snapshots
+
+If you prefer manual control, set `autoInitialize: false` and run the SQL scripts from the Akka.Persistence.Sql repository.
+
+### Testing the API
+
+Start PostgreSQL (using Docker):
+
+```bash
+docker run --name postgres-addressbook \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=addressbook \
+  -p 5432:5432 \
+  -d postgres:15
+```
+
+Run the application:
+
+```bash
+dotnet run
+```
+
+Create an address:
+
+```bash
+curl -X POST https://localhost:7001/api/addresses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "street": "123 Main St",
+    "city": "Springfield",
+    "state": "IL",
+    "zipCode": "62701"
+  }'
+```
+
+Response:
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+Get an address:
+
+```bash
+curl https://localhost:7001/api/addresses/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+Response:
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "street": "123 Main St",
+  "city": "Springfield",
+  "state": "IL",
+  "zipCode": "62701"
+}
+```
+
+Update an address:
+
+```bash
+curl -X PUT https://localhost:7001/api/addresses/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "street": "456 Oak Ave"
+  }'
+```
+
+Delete an address:
+
+```bash
+curl -X DELETE https://localhost:7001/api/addresses/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+## Advanced Topics
+
+### Querying Events with Akka.Persistence.Query
+
+Akka.Persistence.Query lets you read events from the journal to build read models (CQRS):
+
+```csharp
+using Akka.Persistence.Query;
+using Akka.Persistence.Query.Sql;
+using Akka.Streams;
+using Akka.Streams.Dsl;
+
+public class AddressEventProjection
+{
+    private readonly ActorSystem _system;
+    private readonly IReadJournal _readJournal;
+
+    public AddressEventProjection(ActorSystem system)
+    {
+        _system = system;
+        _readJournal = PersistenceQuery.Get(system)
+            .ReadJournalFor<SqlReadJournal>(SqlReadJournal.Identifier);
+    }
+
+    public void ProjectAllEvents()
+    {
+        var materializer = _system.Materializer();
+        
+        _readJournal
+            .AllEvents()
+            .RunForeach(envelope =>
+            {
+                if (envelope.Event is AddressEvent evt)
+                {
+                    // Project event to read model database
+                    Console.WriteLine($"Projecting event: {evt.GetType().Name}");
+                }
+            }, materializer);
+    }
+}
+```
+
+### Clustering for High Availability
+
+Distribute actors across multiple nodes for scalability and fault tolerance:
+
+```csharp
+// Program.cs
+builder.Services.AddAkka("AddressBookSystem", (configBuilder, provider) =>
+{
+    configBuilder
+        .WithClustering()
+        .WithClusterSharding(options =>
+        {
+            options.AddShardRegion<AddressBookActor>(
+                typeName: "addresses",
+                entityPropsFactory: (entityId, shardRegion, system) =>
+                    Props.Create(() => new AddressActor(entityId)),
+                extractEntityId: message => message switch
+                {
+                    AddressCommand cmd => (cmd.AddressId, cmd),
+                    _ => throw new NotSupportedException()
+                },
+                extractShardId: message => message switch
+                {
+                    AddressCommand cmd => (cmd.AddressId.GetHashCode() % 10).ToString(),
+                    _ => throw new NotSupportedException()
+                });
+        });
+});
+```
+
+### Testing Actors
+
+Akka.TestKit provides excellent support for testing actors:
+
+```csharp
+using Akka.TestKit.Xunit2;
+using Xunit;
+
+public class AddressActorTests : TestKit
+{
+    [Fact]
+    public async Task CreateAddress_ShouldPersistEvent()
+    {
+        // Arrange
+        var addressId = "test-123";
+        var actor = Sys.ActorOf(Props.Create(() => new AddressActor(addressId)));
+        
+        // Act
+        var command = new CreateAddress(
+            addressId,
+            "123 Test St",
+            "Test City",
+            "TS",
+            "12345");
+        
+        actor.Tell(command);
+        
+        // Assert
+        var response = await ExpectMsgAsync<AddressCreatedResponse>();
+        Assert.Equal(addressId, response.AddressId);
+        
+        // Verify state
+        actor.Tell(new GetAddress(addressId));
+        var details = await ExpectMsgAsync<AddressDetailsResponse>();
+        Assert.Equal("123 Test St", details.Street);
+    }
+}
+```
+
+## Performance Considerations
+
+### Snapshotting
+
+Taking snapshots periodically improves recovery time:
+
+```csharp
+if (LastSequenceNr % 100 == 0)
+{
+    SaveSnapshot(_state);
+}
+```
+
+### Batching
+
+Use `PersistAll` to persist multiple events atomically:
+
+```csharp
+var events = new[]
+{
+    new AddressUpdated("456 Oak Ave", null, null, null),
+    new AuditEventRecorded(DateTime.UtcNow, "address_updated")
+};
+
+PersistAll(events, evt =>
+{
+    _state.Apply(evt);
+    
+    if (AllEventsProcessed)
+    {
+        Sender.Tell(new AddressUpdatedResponse(PersistenceId));
+    }
+});
+```
+
+### Connection Pooling
+
+Configure PostgreSQL connection pooling for optimal performance:
+
+```json
+{
+  "ConnectionStrings": {
+    "PostgreSQL": "Host=localhost;Port=5432;Database=addressbook;Username=postgres;Password=postgres;Maximum Pool Size=100;Minimum Pool Size=10"
+  }
+}
+```
+
+## Conclusion
+
+Building a REST API with Akka.NET, the Actor Model, and Event Sourcing provides powerful benefits:
+
+- **Simplified concurrency**: No locks needed
+- **Natural state management**: Each entity is an actor
+- **Complete audit trail**: Every change is an event
+- **Fault tolerance**: Supervision hierarchies handle failures
+- **Scalability**: Distribute actors across nodes
+- **Testability**: Easy to test with Akka.TestKit
+
+The Child-Per-Entity pattern gives you a clean, maintainable architecture where each domain entity is represented by an actor. Combined with Akka.Persistence.Sql, you get Event Sourcing with PostgreSQL, providing both the benefits of event-driven architecture and the reliability of a mature relational database.
+
+While there's a learning curve to understanding the Actor Model, the payoff is substantial: highly concurrent, resilient systems that scale gracefully. If you're building APIs that need to handle significant load, complex stateful workflows, or distributed processing, Akka.NET is worth serious consideration.
+
+## Resources
+
+- [Akka.NET Documentation](https://getakka.net/)
+- [Akka.Persistence.Sql GitHub](https://github.com/akkadotnet/Akka.Persistence.Sql)
+- [Petabridge Akka.NET Bootcamp](https://github.com/petabridge/akka-bootcamp)
+- [Actor Model Pattern Collection](https://petabridge.com/blog/top-akkadotnet-design-patterns/)
+- [Event Sourcing with Akka.NET](https://getakka.net/articles/persistence/event-sourcing.html)
+
+Happy coding with Akka.NET! 🚀
